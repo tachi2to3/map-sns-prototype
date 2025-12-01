@@ -5,6 +5,37 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>map-test</title>
+    <script>
+      // デバッグ用: エラーを画面に表示する
+      window.addEventListener('error', function(event) {
+        const errorBox = document.createElement('div');
+        errorBox.style.position = 'fixed';
+        errorBox.style.top = '0';
+        errorBox.style.left = '0';
+        errorBox.style.width = '100%';
+        errorBox.style.background = '#ffdddd';
+        errorBox.style.color = 'red';
+        errorBox.style.padding = '20px';
+        errorBox.style.zIndex = '9999';
+        errorBox.style.borderBottom = '2px solid red';
+        errorBox.innerText = 'エラーが発生しました: ' + event.message + ' (' + event.filename + ':' + event.lineno + ')';
+        document.body.appendChild(errorBox);
+      });
+      window.addEventListener('unhandledrejection', function(event) {
+        const errorBox = document.createElement('div');
+        errorBox.style.position = 'fixed';
+        errorBox.style.top = '50px'; // 重ならないようにずらす
+        errorBox.style.left = '0';
+        errorBox.style.width = '100%';
+        errorBox.style.background = '#ffffdd';
+        errorBox.style.color = 'brown';
+        errorBox.style.padding = '20px';
+        errorBox.style.zIndex = '9999';
+        errorBox.style.borderBottom = '2px solid orange';
+        errorBox.innerText = 'Promiseエラー: ' + event.reason;
+        document.body.appendChild(errorBox);
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>
