@@ -1,14 +1,14 @@
 import { useAuth } from './context/AuthContext';
-import Signup from './components/Signup';
+import Auth from './components/Auth';
 import Map from './components/Map';
 
 function App() {
   const { currentUser } = useAuth();
 
-  // ユーザー情報があれば地図を、なければ登録画面を表示
+  // ユーザー情報があれば地図を、なければ認証画面を表示
   return (
     <>
-      {currentUser ? <Map /> : <Signup />}
+      {currentUser ? <Map /> : <Auth />}
     </>
   );
 }
