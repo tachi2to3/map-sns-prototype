@@ -1,3 +1,9 @@
+/* ↓ この3行が絶対に必要です！これを一番上に追加してください */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ↓ 既存のコードはそのまま残してOK */
 html, body, #root {
   height: 100%;
   margin: 0;

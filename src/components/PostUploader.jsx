@@ -16,7 +16,6 @@ export default function PostUploader({ onPostSuccess }) {
   const [caption, setCaption] = useState("");
   const [location, setLocation] = useState(null);
   const [locationSource, setLocationSource] = useState("");
-  // ★追加：GPS取得中フラグ
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
   const compressionOptions = {
@@ -35,10 +34,7 @@ export default function PostUploader({ onPostSuccess }) {
       setFile(compressedFile);
       setPreviewUrl(URL.createObjectURL(compressedFile));
       setStep('preview');
-
-      // 位置情報の取得開始（圧縮前の元のファイルを使う）
       extractLocation(selectedFile); 
-
     } catch (error) {
       console.error("画像処理エラー:", error);
       alert("画像の読み込みに失敗しました");
@@ -46,16 +42,14 @@ export default function PostUploader({ onPostSuccess }) {
   };
 
   const extractLocation = async (originalFile) => {
-    setIsLoadingLocation(true); // ロード開始
+    setIsLoadingLocation(true);
     try {
-      // 1. 写真のExif情報をチェック
       const gps = await exifr.gps(originalFile);
       if (gps && gps.latitude && gps.longitude) {
         setLocation({ lat: gps.latitude, lng: gps.longitude });
         setLocationSource("写真の位置情報");
         setIsLoadingLocation(false);
       } else {
-        // 2. 写真にGPSがない場合、スマホの現在地を取得
         fetchCurrentPosition();
       }
     } catch (error) {
@@ -64,33 +58,26 @@ export default function PostUploader({ onPostSuccess }) {
     }
   };
 
-  // ★GPS取得ロジックの強化版
   const fetchCurrentPosition = () => {
     if (!navigator.geolocation) {
       alert("お使いのブラウザは位置情報をサポートしていません");
       setIsLoadingLocation(false);
       return;
     }
-
-    // オプション設定: タイムアウトを10秒に延長
     const options = {
-      enableHighAccuracy: true, // GPS優先
-      timeout: 10000,           // 10秒待つ
+      enableHighAccuracy: true,
+      timeout: 10000,
       maximumAge: 0
     };
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        });
+        setLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
         setLocationSource("現在地");
         setIsLoadingLocation(false);
       },
       (err) => {
         console.warn("高精度GPS失敗、低精度で再試行します...", err);
-        // ★失敗時のフォールバック：低精度（Wi-Fiなど）で再トライ
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
@@ -99,7 +86,6 @@ export default function PostUploader({ onPostSuccess }) {
           },
           (err2) => {
             console.error("位置情報取得完全失敗:", err2);
-            // スマホ実機でHTTPSでない場合はここで失敗します
             alert("位置情報が取得できませんでした。\n※スマホの場合はHTTPS(ngrok等)が必要です。");
             setIsLoadingLocation(false);
           },
@@ -156,7 +142,8 @@ export default function PostUploader({ onPostSuccess }) {
 
   return (
     <>
-      <div className="absolute bottom-6 right-6 z-50">
+      {/* ★変更: 親要素での配置に任せるため、absolute等のクラスを削除 */}
+      <div className="">
         <button
           onClick={() => fileInputRef.current.click()}
           className="bg-blue-600 hover:bg-blue-500 text-white rounded-full p-4 shadow-xl transition-all transform hover:scale-110 flex items-center justify-center"
@@ -180,7 +167,6 @@ export default function PostUploader({ onPostSuccess }) {
 
           <div className="bg-white p-5 rounded-t-2xl shadow-lg pb-10">
              <div className="flex items-center text-xs text-gray-500 mb-2">
-               {/* ★GPS取得中の表示を追加 */}
                {isLoadingLocation ? (
                  <span className="text-orange-500 animate-pulse font-bold">📡 位置情報を取得中...</span>
                ) : location ? (
@@ -200,7 +186,6 @@ export default function PostUploader({ onPostSuccess }) {
             
             <button
               onClick={handleUpload}
-              // ★ロード中はボタンを押せないように制御
               disabled={!location || isLoadingLocation} 
               className={`w-full py-3 font-bold rounded-xl text-white transition-colors ${
                 location ? 'bg-blue-600' : 'bg-gray-400 cursor-not-allowed'
