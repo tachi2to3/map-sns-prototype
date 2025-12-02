@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import { useNavigate } from 'react-router-dom'; // ★追加: 画面遷移用
 
 export default function Auth() {
-  const [mode, setMode] = useState('signup'); // 'signup' | 'login'
+  const [mode, setMode] = useState('login'); // 初期値をloginに変更（使いやすさのため）
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -12,6 +13,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
 
   const { signup, login } = useAuth();
+  const navigate = useNavigate(); // ★追加
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -34,10 +36,12 @@ export default function Auth() {
         });
 
         alert("登録完了！");
+        navigate('/'); // ★地図へ移動
       } else {
-        // ログインのみ（Firestore書き込み不要）
+        // ログインのみ
         await login(email, password);
-        alert("ログイン完了！");
+        // alert("ログイン完了！"); // 毎回出ると邪魔なのでコメントアウト推奨
+        navigate('/'); // ★地図へ移動
       }
 
     } catch (err) {
@@ -52,82 +56,86 @@ export default function Auth() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
-        <h2 className="mb-6 text-2xl font-bold text-center text-gray-800">
-          {mode === 'signup' ? 'アカウント作成' : 'ログイン'}
+    <div className="min-h-screen bg-[#1a1a1a] text-[#Decbb7] flex items-center justify-center p-6 font-sans">
+      <div className="w-full max-w-md bg-white/5 backdrop-blur-md border border-[#Decbb7]/20 p-8 rounded-3xl shadow-2xl">
+        <h2 className="text-3xl font-bold text-center mb-8 tracking-wider">
+          {mode === 'signup' ? 'JOIN US' : 'WELCOME BACK'}
         </h2>
-        {error && <div className="p-3 mb-4 text-sm text-red-700 bg-red-100 rounded">{error}</div>}
+        
+        {error && <div className="bg-red-500/20 text-red-300 p-3 rounded-lg mb-4 text-sm text-center">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {mode === 'signup' && (
             <div>
-              <label className="block mb-1 text-sm font-medium text-gray-700">ユーザー名</label>
+              <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-70">Username</label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 placeholder="マップ上の表示名"
-                className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-[#1a1a1a]/50 border border-[#Decbb7]/30 rounded-xl p-4 text-[#Decbb7] focus:outline-none focus:border-[#Decbb7] transition placeholder-[#Decbb7]/20"
               />
             </div>
           )}
+          
           <div>
-            <label className="block mb-1 text-sm font-medium text-gray-700">メールアドレス</label>
+            <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-70">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
+              placeholder="name@example.com"
+              className="w-full bg-[#1a1a1a]/50 border border-[#Decbb7]/30 rounded-xl p-4 text-[#Decbb7] focus:outline-none focus:border-[#Decbb7] transition placeholder-[#Decbb7]/20"
             />
           </div>
+          
           <div>
-            <label className="block mb-1 text-sm font-medium text-gray-700">パスワード</label>
+            <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-70">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
+              placeholder="••••••••"
+              className="w-full bg-[#1a1a1a]/50 border border-[#Decbb7]/30 rounded-xl p-4 text-[#Decbb7] focus:outline-none focus:border-[#Decbb7] transition placeholder-[#Decbb7]/20"
             />
           </div>
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
+            className="w-full bg-[#Decbb7] text-[#1a1a1a] font-bold py-4 rounded-xl hover:bg-white transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {mode === 'signup' ? '登録する' : 'ログイン'}
+            {mode === 'signup' ? 'SIGN UP' : 'LOG IN'}
           </button>
         </form>
 
-        <div className="text-center mt-4">
-          <p className="text-sm text-gray-600">
-            {mode === 'signup' ? (
-              <>
-                すでにアカウントをお持ちですか？{' '}
-                <button
-                  type="button"
-                  onClick={() => setMode('login')}
-                  className="text-blue-600 hover:underline font-medium"
-                >
-                  ログイン
-                </button>
-              </>
-            ) : (
-              <>
-                アカウントをお持ちでないですか？{' '}
-                <button
-                  type="button"
-                  onClick={() => setMode('signup')}
-                  className="text-blue-600 hover:underline font-medium"
-                >
-                  新規登録
-                </button>
-              </>
-            )}
-          </p>
+        <div className="mt-6 text-center text-sm opacity-70">
+          {mode === 'signup' ? (
+            <>
+              すでにアカウントをお持ちですか？{' '}
+              <button
+                type="button"
+                onClick={() => setMode('login')}
+                className="ml-2 font-bold underline hover:text-white transition"
+              >
+                ログイン
+              </button>
+            </>
+          ) : (
+            <>
+              アカウントをお持ちでないですか？{' '}
+              <button
+                type="button"
+                onClick={() => setMode('signup')}
+                className="ml-2 font-bold underline hover:text-white transition"
+              >
+                新規登録
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
