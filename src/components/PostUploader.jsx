@@ -104,7 +104,8 @@ export default function PostUploader({ onPostSuccess }) {
     setStep('uploading');
 
     try {
-      const storageRef = ref(storage, `posts/${currentUser.uid}/${Date.now()}_${file.name}`);
+      const timestamp = Date.now();
+      const storageRef = ref(storage, `posts/${currentUser.uid}/${timestamp}_${file.name}`);
       await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(storageRef);
 
@@ -120,7 +121,7 @@ export default function PostUploader({ onPostSuccess }) {
         createdAt: serverTimestamp(),
       });
 
-      alert("投稿しました！");
+      // alert("投稿しました！"); // No alert for smoother UX
       handleCancel();
       if (onPostSuccess) onPostSuccess();
 
@@ -142,65 +143,80 @@ export default function PostUploader({ onPostSuccess }) {
 
   return (
     <>
-      {/* ★変更: 親要素での配置に任せるため、absolute等のクラスを削除 */}
       <div className="">
         <button
           onClick={() => fileInputRef.current.click()}
-          className="bg-blue-600 hover:bg-blue-500 text-white rounded-full p-4 shadow-xl transition-all transform hover:scale-110 flex items-center justify-center"
+          className="bg-[#Decbb7] text-[#1a1a1a] rounded-full p-4 shadow-[0_0_30px_rgba(222,203,183,0.4)] transition-all transform hover:scale-110 flex items-center justify-center border-2 border-transparent hover:border-white/20"
           style={{ width: '64px', height: '64px' }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
           </svg>
         </button>
-        <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden"/>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleFileSelect} 
+          accept="image/*" 
+          capture="environment"
+          className="hidden"
+        />
       </div>
 
       {step === 'preview' && (
         <div className="fixed inset-0 z-[60] bg-black flex flex-col h-full w-full">
           <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
-            <img src={previewUrl} alt="Preview" className="max-w-full max-h-full object-contain" />
-            <button onClick={handleCancel} className="absolute top-4 left-4 z-10 bg-black bg-opacity-50 text-white rounded-full p-2">
-              ✕
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-gray-800/20 to-black pointer-events-none"></div>
+            <img src={previewUrl} alt="Preview" className="max-w-full max-h-full object-contain z-10 shadow-2xl" />
+            <button onClick={handleCancel} className="absolute top-6 left-6 z-20 w-10 h-10 bg-black/40 backdrop-blur-md text-white rounded-full flex items-center justify-center border border-white/10">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
 
-          <div className="bg-white p-5 rounded-t-2xl shadow-lg pb-10">
-             <div className="flex items-center text-xs text-gray-500 mb-2">
+          <div className="bg-[#121212] p-6 rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-white/10 pb-10">
+             <div className="flex items-center justify-center text-xs mb-4 font-sans tracking-wider">
                {isLoadingLocation ? (
-                 <span className="text-orange-500 animate-pulse font-bold">📡 位置情報を取得中...</span>
+                 <span className="text-[#Decbb7] animate-pulse font-bold flex items-center gap-2">
+                   <span className="w-2 h-2 bg-[#Decbb7] rounded-full animate-ping"/> LOCATING...
+                 </span>
                ) : location ? (
-                 <span className="text-green-600 font-bold">📍 {locationSource}を使用中</span>
+                 <span className="text-[#Decbb7] font-bold flex items-center gap-2 border border-[#Decbb7]/30 px-3 py-1 rounded-full bg-[#Decbb7]/10">
+                   📍 {locationSource}
+                 </span>
                ) : (
-                 <span className="text-red-500 font-bold">⚠ 位置情報なし</span>
+                 <span className="text-red-500 font-bold flex items-center gap-2">
+                   ⚠ NO LOCATION
+                 </span>
                )}
              </div>
 
             <textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              placeholder="キャプションを入力..."
-              className="w-full bg-gray-100 p-3 rounded-xl mb-3 resize-none focus:outline-none"
+              placeholder="Write a caption..."
+              className="w-full bg-[#1a1a1a] text-white p-4 rounded-xl mb-4 resize-none focus:outline-none border border-white/5 focus:border-[#Decbb7]/50 transition-colors placeholder-white/20 font-sans"
               rows="3"
             />
             
             <button
               onClick={handleUpload}
               disabled={!location || isLoadingLocation} 
-              className={`w-full py-3 font-bold rounded-xl text-white transition-colors ${
-                location ? 'bg-blue-600' : 'bg-gray-400 cursor-not-allowed'
+              className={`w-full py-4 font-bold rounded-xl text-[#1a1a1a] transition-all transform active:scale-98 font-display tracking-wide ${
+                location ? 'bg-[#Decbb7] hover:bg-[#eaddcf] shadow-[0_0_20px_rgba(222,203,183,0.2)]' : 'bg-white/10 text-white/30 cursor-not-allowed'
               }`}
             >
-              {isLoadingLocation ? "位置情報を取得しています..." : "シェアする"}
+              {isLoadingLocation ? "WAITING FOR GPS..." : "SHARE RECORD"}
             </button>
           </div>
         </div>
       )}
 
       {step === 'uploading' && (
-        <div className="fixed inset-0 z-[70] bg-black bg-opacity-80 flex flex-col items-center justify-center text-white">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white mb-4"></div>
-          <p>保存中...</p>
+        <div className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center text-white">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#Decbb7] mb-6"></div>
+          <p className="font-display tracking-widest text-[#Decbb7]">SAVING RECORD...</p>
         </div>
       )}
     </>
