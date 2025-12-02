@@ -153,7 +153,14 @@ export default function PostUploader({ onPostSuccess }) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
           </svg>
         </button>
-        <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden"/>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleFileSelect} 
+          accept="image/*" 
+          capture="environment"
+          className="hidden"
+        />
       </div>
 
       {step === 'preview' && (
