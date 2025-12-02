@@ -26,3 +26,8 @@ dist
 *.njsproj
 *.sln
 *.sw?
+
+# Agent tools
+.claude
+CLAUDE.md
+basev2.md
