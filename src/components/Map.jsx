@@ -5,6 +5,7 @@ import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import PostUploader from './PostUploader';
 import PostDetail from './PostDetail';
 import PostList from './PostList'; // ★追加: 作成したリストコンポーネント
+import Header from './Header'; // ★追加: ヘッダーコンポーネント
 
 const containerStyle = {
   width: '100%',
@@ -95,6 +96,7 @@ export default function Map() {
   const [posts, setPosts] = useState([]);
   const [selectedPost, setSelectedPost] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(15);
+  const [isPostListOpen, setIsPostListOpen] = useState(true);
 
   useEffect(() => {
     const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
@@ -136,21 +138,17 @@ export default function Map() {
 
   return (
     <div className="relative w-full h-[100dvh] overflow-hidden">
-      <button 
-        onClick={() => auth.signOut()}
-        className="absolute top-4 right-4 z-10 px-4 py-2 bg-white text-red-600 rounded-full shadow-md font-bold text-sm"
-      >
-        ログアウト
-      </button>
+      {/* ★追加: ヘッダーコンポーネント */}
+      <Header />
 
       {/* ★追加: 投稿ボタンの位置調整 */}
-      {/* リスト(z-30)より上に表示(z-40)、リストが被らない位置(bottom-40 ≒ 160px)に配置 */}
-      <div className="absolute bottom-40 right-6 z-40">
+      {/* リスト(z-30)より上に表示(z-40)、リストの開閉状態に応じて位置を調整 */}
+      <div className={`absolute ${isPostListOpen ? 'bottom-40' : 'bottom-6'} left-6 z-40 transition-all duration-300`}>
         <PostUploader onPostSuccess={handlePostSuccess} />
       </div>
 
       {/* ★追加: 近くの投稿リスト（画面下部） */}
-      <PostList posts={posts} />
+      <PostList posts={posts} onOpenStateChange={setIsPostListOpen} />
 
       <GoogleMap
         mapContainerStyle={containerStyle}
