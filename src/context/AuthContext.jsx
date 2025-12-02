@@ -1,12 +1,13 @@
 // src/context/AuthContext.jsx
 import React, { useContext, useState, useEffect, createContext } from "react";
-import { auth } from "../firebase";
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged 
+import { auth, db } from "../firebase";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
 } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 
 // Contextの作成
 const AuthContext = createContext();
@@ -40,13 +41,40 @@ export function AuthProvider({ children }) {
   // アプリを開いたとき、すでにログイン済みかチェックします
   useEffect(() => {
     console.log("AuthContext: Start monitoring auth state...");
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log("AuthContext: Auth state changed:", user);
-      setCurrentUser(user);
+
+      if (user) {
+        try {
+          // Firestoreからユーザー情報を取得
+          const userDocRef = doc(db, "users", user.uid);
+          const userDocSnap = await getDoc(userDocRef);
+
+          if (userDocSnap.exists()) {
+            // Firestoreのデータをマージ
+            const userData = userDocSnap.data();
+            setCurrentUser({
+              ...user,
+              username: userData.username,
+              photoURL: userData.photoURL || user.photoURL,
+            });
+          } else {
+            // Firestoreにデータがない場合のフォールバック
+            console.warn("User document not found in Firestore");
+            setCurrentUser(user);
+          }
+        } catch (error) {
+          console.error("Error fetching user data from Firestore:", error);
+          setCurrentUser(user);
+        }
+      } else {
+        setCurrentUser(null); // ログアウト時
+      }
+
       setLoading(false);
     }, (error) => {
-        console.error("AuthContext: Auth error:", error);
-        setLoading(false);
+      console.error("AuthContext: Auth error:", error);
+      setLoading(false);
     });
 
     return unsubscribe;
