@@ -1,6 +1,8 @@
-import React, { useCallback, useState } from 'react';
-import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
-import { auth } from '../firebase'; // ログアウト用にインポート
+import React, { useCallback, useState, useEffect } from 'react';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
+import { auth, db } from '../firebase'; // dbを追加インポート
+import { collection, query, orderBy, onSnapshot } from "firebase/firestore"; // データ読み込み用
+import PostUploader from './PostUploader';
 
 const containerStyle = {
   width: '100%',
@@ -20,94 +22,71 @@ export default function Map() {
 
   const [map, setMap] = useState(null);
   const [currentLocation, setCurrentLocation] = useState(null);
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [locationError, setLocationError] = useState(null);
+  
+  // ★追加：投稿データを管理するState
+  const [posts, setPosts] = useState([]); 
+  const [selectedPost, setSelectedPost] = useState(null); // ピンをクリックした時の詳細
+
+  // ★追加：データベースから投稿をリアルタイム取得する処理
+  useEffect(() => {
+    // 投稿を新しい順に取得するクエリ
+    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+    
+    // データベースに変更があるたびに自動実行される
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const postsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setPosts(postsData);
+    });
+
+    return () => unsubscribe(); // クリーンアップ
+  }, []);
 
   const onLoad = useCallback(function callback(map) {
     setMap(map);
 
-    // ブラウザ対応チェック
-    if (!navigator.geolocation) {
-      setLocationError('お使いのブラウザは位置情報をサポートしていません。');
-      setCurrentLocation(defaultCenter);
-      setIsGettingLocation(false);
-      return;
-    }
-
-    // 現在地取得
-    setIsGettingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      // 成功時
-      (position) => {
-        const location = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        };
-        setCurrentLocation(location);
-        setIsGettingLocation(false);
-        setLocationError(null);
-
-        // 地図の中心を移動
-        map.panTo(location);
-      },
-      // エラー時
-      (error) => {
-        let errorMessage;
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = '位置情報の使用が拒否されました。デフォルト位置を表示します。';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = '位置情報が取得できませんでした。デフォルト位置を表示します。';
-            break;
-          case error.TIMEOUT:
-            errorMessage = '位置情報の取得がタイムアウトしました。デフォルト位置を表示します。';
-            break;
-          default:
-            errorMessage = '位置情報の取得中にエラーが発生しました。デフォルト位置を表示します。';
+    // ブラウザの現在地取得
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const pos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          setCurrentLocation(pos);
+          map.panTo(pos);
+        },
+        () => {
+          console.log("現在地取得失敗");
         }
-        setLocationError(errorMessage);
-        setCurrentLocation(defaultCenter);
-        setIsGettingLocation(false);
-      },
-      // オプション
-      {
-        enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 0
-      }
-    );
+      );
+    }
   }, []);
 
   const onUnmount = useCallback(function callback(map) {
     setMap(null);
   }, []);
 
+  const handlePostSuccess = () => {
+    console.log("投稿完了！");
+    // onSnapshotを使っているため、自動でピンが増えます
+  };
+
   if (loadError) return <div className="flex items-center justify-center h-screen">Error loading maps</div>;
   if (!isLoaded) return <div className="flex items-center justify-center h-screen">Loading Maps...</div>;
 
   return (
-    <div className="relative">
-      {/* 仮のログアウトボタン（地図の上に表示） */}
-      <button
+    <div className="relative h-screen w-full overflow-hidden">
+      <button 
         onClick={() => auth.signOut()}
-        className="absolute top-4 right-4 z-10 px-4 py-2 bg-white text-red-600 rounded shadow hover:bg-gray-100"
+        className="absolute top-4 right-4 z-10 px-4 py-2 bg-white text-red-600 rounded-full shadow-md font-bold text-sm"
       >
         ログアウト
       </button>
 
-      {locationError && (
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-10 px-6 py-3 bg-red-100 border border-red-400 text-red-700 rounded shadow-lg max-w-md">
-          <p className="text-sm">{locationError}</p>
-        </div>
-      )}
-
-      {isGettingLocation && (
-        <div className="absolute inset-0 z-20 bg-white bg-opacity-75 flex flex-col items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-          <p className="text-gray-700">現在地を取得中...</p>
-        </div>
-      )}
+      <PostUploader onPostSuccess={handlePostSuccess} />
 
       <GoogleMap
         mapContainerStyle={containerStyle}
@@ -115,11 +94,13 @@ export default function Map() {
         zoom={15}
         onLoad={onLoad}
         onUnmount={onUnmount}
-        options={{ disableDefaultUI: false, zoomControl: true }}
+        options={{ disableDefaultUI: true, zoomControl: false, gestureHandling: "greedy" }}
       >
+        {/* 自分自身の現在地（青い丸） */}
         {currentLocation && (
           <Marker
             position={currentLocation}
+            zIndex={999} // 自分を一番手前に
             icon={{
               path: window.google.maps.SymbolPath.CIRCLE,
               scale: 8,
@@ -129,6 +110,29 @@ export default function Map() {
               strokeWeight: 2
             }}
           />
+        )}
+
+        {/* ★追加：みんなの投稿ピンを表示 */}
+        {posts.map((post) => (
+          <Marker
+            key={post.id}
+            position={{ lat: post.lat, lng: post.lng }}
+            onClick={() => setSelectedPost(post)} // クリックしたら詳細表示
+          />
+        ))}
+
+        {/* ★追加：ピンをクリックした時に出る吹き出し */}
+        {selectedPost && (
+          <InfoWindow
+            position={{ lat: selectedPost.lat, lng: selectedPost.lng }}
+            onCloseClick={() => setSelectedPost(null)}
+          >
+            <div className="max-w-xs">
+              <img src={selectedPost.imageUrl} alt="memory" className="w-full h-32 object-cover rounded mb-2" />
+              <p className="text-sm font-bold text-gray-800">{selectedPost.caption}</p>
+              <p className="text-xs text-gray-500 mt-1">by {selectedPost.username}</p>
+            </div>
+          </InfoWindow>
         )}
       </GoogleMap>
     </div>

@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 // .envファイルから環境変数を読み込む
 console.log("Firebase Config Check:", {
@@ -27,3 +28,4 @@ export const auth = getAuth(app);
 // データベース(Firestore)のエクスポート
 // ※これがないとSignup.jsxでデータベースに書き込めません
 export const db = getFirestore(app);
+export const storage = getStorage(app);
