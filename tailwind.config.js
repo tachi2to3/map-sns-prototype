@@ -14,8 +14,8 @@ export default {
         }
       },
       fontFamily: {
-        // 丸ゴシック風のフォントを適用（もしWebフォントがあればここで指定）
-        sans: ['"Hiragino Maru Gothic ProN"', '"Rounded Mplus 1c"', 'sans-serif'],
+        sans: ['"Zen Kaku Gothic New"', 'sans-serif'],
+        display: ['"Space Grotesk"', 'sans-serif'],
       },
       keyframes: {
         slideInRight: {
