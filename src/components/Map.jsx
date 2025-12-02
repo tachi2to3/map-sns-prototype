@@ -1,55 +1,40 @@
-import React, { useCallback, useState, useEffect } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow, OverlayView, OverlayViewF } from '@react-google-maps/api';
+import React, { useCallback, useState, useEffect, useRef } from 'react'; // ★ useRef 追加
+import { GoogleMap, useJsApiLoader, Marker, OverlayView, OverlayViewF, InfoWindow } from '@react-google-maps/api';
 import { auth, db } from '../firebase';
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
-import PostUploader from './PostUploader';
+import { useNavigate } from 'react-router-dom';
+import PostList from './PostList';
 import PostDetail from './PostDetail';
-import PostList from './PostList'; // ★追加: 作成したリストコンポーネント
 
+// ■■■ スタイル定義 ■■■
 const containerStyle = {
   width: '100%',
-  height: '100dvh' // スマホアドレスバー対策
+  height: '100dvh', 
 };
 
-const defaultCenter = {
-  lat: 35.681236,
-  lng: 139.767125
-};
-
+// ダークモードマップスタイル
 const mapStyles = [
-  { "featureType": "administrative", "elementType": "geometry", "stylers": [{ "visibility": "off" }] },
-  { "featureType": "administrative.locality", "elementType": "labels.text.fill", "stylers": [{ "color": "#818181" }] },
-  { "featureType": "poi", "elementType": "all", "stylers": [{ "visibility": "off" }] },
-  { "featureType": "road", "elementType": "geometry", "stylers": [{ "lightness": 10 }, { "saturation": -10 }] },
-  { "featureType": "road", "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
-  { "featureType": "road", "elementType": "labels.text", "stylers": [{ "visibility": "off" }] },
-  { "featureType": "transit", "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
-  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#c0e4f3" }] }
+  { elementType: "geometry", stylers: [{ color: "#212121" }] },
+  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
+  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#757575" }] },
+  { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+  { featureType: "poi", elementType: "geometry", stylers: [{ color: "#181818" }] },
+  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#2c2c2c" }] },
+  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#8a8a8a" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#3d3d3d" }] }
 ];
 
+// 地図上の投稿ピン
 const PostOverlay = ({ post, onClick, zoomLevel }) => {
   const baseZoom = 15;
   const scale = Math.pow(1.2, zoomLevel - baseZoom);
-  const baseWidth = 100;
-  const baseImageHeight = 80;
-  const baseFontSize = 12;
-  const baseUsernameFontSize = 10;
-  const baseIconSize = 12;
-
-  const currentWidth = Math.min(Math.max(baseWidth * scale, 60), 250);
-  const currentImageHeight = Math.min(Math.max(baseImageHeight * scale, 40), 180);
-  const currentFontSize = Math.min(Math.max(baseFontSize * scale, 10), 18);
-  const currentUsernameFontSize = Math.min(Math.max(baseUsernameFontSize * scale, 8), 14);
-  const currentIconSize = Math.min(Math.max(baseIconSize * scale, 10), 16);
-
-  const [likeCount, setLikeCount] = useState(0);
-  const [commentCount, setCommentCount] = useState(0);
-
-  useEffect(() => {
-    const unsubscribeLikes = onSnapshot(collection(db, 'posts', post.id, 'likes'), (snap) => setLikeCount(snap.size));
-    const unsubscribeComments = onSnapshot(collection(db, 'posts', post.id, 'comments'), (snap) => setCommentCount(snap.size));
-    return () => { unsubscribeLikes(); unsubscribeComments(); };
-  }, [post.id]);
+  const currentWidth = Math.min(Math.max(100 * scale, 60), 250);
+  const currentImageHeight = Math.min(Math.max(80 * scale, 40), 180);
+  const currentFontSize = Math.min(Math.max(12 * scale, 10), 18);
+  const currentUsernameFontSize = Math.min(Math.max(10 * scale, 8), 14);
 
   return (
     <div 
@@ -58,24 +43,10 @@ const PostOverlay = ({ post, onClick, zoomLevel }) => {
       style={{ zIndex: Math.floor(zoomLevel) + 10 }}
     >
       <div className="bg-white p-1 rounded-lg shadow-md overflow-hidden flex flex-col" style={{ width: `${currentWidth}px` }}>
-        <img src={post.imageUrl} alt={post.caption} className="w-full object-cover rounded" style={{ height: `${currentImageHeight}px` }} />
+        <img src={post.imageUrl} alt="" className="w-full object-cover rounded" style={{ height: `${currentImageHeight}px` }} />
         <div className="mt-1">
           <p className="truncate text-gray-800 font-bold leading-tight" style={{ fontSize: `${currentFontSize}px` }}>{post.caption}</p>
           <p className="truncate text-gray-500 text-right leading-tight mb-1" style={{ fontSize: `${currentUsernameFontSize}px` }}>by {post.username}</p>
-          <div className="flex items-center justify-end space-x-2 text-gray-500">
-            <div className="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="text-pink-400" fill="currentColor" viewBox="0 0 24 24" style={{ width: currentIconSize, height: currentIconSize }}>
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-              </svg>
-              <span className="ml-0.5 font-bold" style={{ fontSize: `${currentUsernameFontSize}px` }}>{likeCount}</span>
-            </div>
-            <div className="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="text-blue-400" fill="currentColor" viewBox="0 0 24 24" style={{ width: currentIconSize, height: currentIconSize }}>
-                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-              </svg>
-              <span className="ml-0.5 font-bold" style={{ fontSize: `${currentUsernameFontSize}px` }}>{commentCount}</span>
-            </div>
-          </div>
         </div>
       </div>
       <div className="border-l-transparent border-r-transparent border-t-white mx-auto filter drop-shadow-md"
@@ -90,11 +61,15 @@ export default function Map() {
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY
   });
 
+  const navigate = useNavigate();
+  const fileInputRef = useRef(null); // ★追加: カメラ起動用のref
+
   const [map, setMap] = useState(null);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [posts, setPosts] = useState([]);
   const [selectedPost, setSelectedPost] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(15);
+  const SHOW_POST_ZOOM_LEVEL = 15;
 
   useEffect(() => {
     const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
@@ -105,73 +80,97 @@ export default function Map() {
     return () => unsubscribe();
   }, []);
 
-  const onLoad = useCallback(function callback(map) {
+  const onLoad = useCallback((map) => {
     setMap(map);
     setZoomLevel(map.getZoom());
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
-          setCurrentLocation(pos);
-          map.panTo(pos);
-        },
-        () => console.log("現在地取得失敗")
+        (pos) => {
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setCurrentLocation(loc);
+          map.panTo(loc);
+        }
       );
     }
   }, []);
 
-  const onUnmount = useCallback(function callback(map) {
-    setMap(null);
-  }, []);
+  const onUnmount = useCallback(() => setMap(null), []);
 
   const handleZoomChanged = useCallback(() => {
     if (map) setZoomLevel(map.getZoom());
   }, [map]);
 
-  const handlePostSuccess = () => console.log("投稿完了");
-  const SHOW_POST_ZOOM_LEVEL = 15;
+  // ★追加: カメラで撮影された後の処理
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    // 撮影されたファイルを持って投稿ページへ移動
+    navigate('/post', { state: { selectedFile: file } });
+    e.target.value = ''; // reset
+  };
 
-  if (loadError) return <div className="flex items-center justify-center h-screen">Error loading maps</div>;
-  if (!isLoaded) return <div className="flex items-center justify-center h-screen">Loading Maps...</div>;
+
+  if (loadError) return <div className="bg-[#1a1a1a] text-[#Decbb7] h-screen flex items-center justify-center">Error</div>;
+  if (!isLoaded) return <div className="bg-[#1a1a1a] text-[#Decbb7] h-screen flex items-center justify-center">Loading...</div>;
 
   return (
-    <div className="relative w-full h-[100dvh] overflow-hidden">
+    <div className="relative w-full h-[100dvh] bg-[#1a1a1a] overflow-hidden font-sans text-[#Decbb7]">
+      
+      {/* ログアウトボタン */}
       <button 
         onClick={() => auth.signOut()}
-        className="absolute top-4 right-4 z-10 px-4 py-2 bg-white text-red-600 rounded-full shadow-md font-bold text-sm"
+        className="absolute top-4 right-4 z-10 px-4 py-2 bg-[#1a1a1a]/80 backdrop-blur-md border border-[#Decbb7]/30 text-[#Decbb7] rounded-full shadow-lg font-bold text-xs"
       >
         ログアウト
       </button>
 
-      {/* ★追加: 投稿ボタンの位置調整 */}
-      {/* リスト(z-30)より上に表示(z-40)、リストが被らない位置(bottom-40 ≒ 160px)に配置 */}
+      {/* ★追加: 隠しカメラ起動ボタン */}
+      <input 
+        type="file" 
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        accept="image/*"
+        capture="environment" // スマホでカメラを直接起動
+        className="hidden"
+      />
+
+      {/* ★変更: 投稿ボタン（プラス） */}
       <div className="absolute bottom-40 right-6 z-40">
-        <PostUploader onPostSuccess={handlePostSuccess} />
+        <button
+          onClick={() => fileInputRef.current.click()} // ★変更: 隠しカメラボタンをクリック
+          className="bg-[#Decbb7] text-[#1a1a1a] border-4 border-[#1a1a1a] rounded-full shadow-2xl transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center"
+          style={{ width: '72px', height: '72px' }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
       </div>
 
-      {/* ★追加: 近くの投稿リスト（画面下部） */}
+      {/* 下部リスト */}
       <PostList posts={posts} />
 
+      {/* Google Map */}
       <GoogleMap
         mapContainerStyle={containerStyle}
-        center={currentLocation || defaultCenter}
+        center={currentLocation || { lat: 35.681236, lng: 139.767125 }}
         zoom={zoomLevel}
         onLoad={onLoad}
         onUnmount={onUnmount}
         onZoomChanged={handleZoomChanged}
-        options={{ disableDefaultUI: true, zoomControl: false, gestureHandling: "greedy", styles: mapStyles }}
+        options={{ disableDefaultUI: true, zoomControl: false, gestureHandling: "greedy", styles: mapStyles, backgroundColor: '#1a1a1a' }}
       >
         {currentLocation && (
           <Marker
             position={currentLocation}
-            zIndex={9999}
+            zIndex={999}
             icon={{
               path: window.google.maps.SymbolPath.CIRCLE,
-              scale: 8,
-              fillColor: '#4285F4',
+              scale: 10,
+              fillColor: '#Decbb7',
               fillOpacity: 1,
-              strokeColor: '#FFFFFF',
-              strokeWeight: 2
+              strokeColor: '#1a1a1a',
+              strokeWeight: 4
             }}
           />
         )}
