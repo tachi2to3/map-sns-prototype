@@ -5,7 +5,6 @@ import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { useNavigate } from 'react-router-dom';
 import PostList from './PostList';
 import PostDetail from './PostDetail';
-import PostUploader from './PostUploader';
 import Header from './Header';
 
 // ■■■ スタイル定義 ■■■
@@ -19,32 +18,20 @@ const defaultCenter = {
   lng: 139.767125
 };
 
-// Dark "Noir" Map Style
 const mapStyles = [
   { elementType: "geometry", stylers: [{ color: "#212121" }] },
   { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
   { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
   { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#757575" }] },
-  { featureType: "administrative.country", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] },
-  { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
-  { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#bdbdbd" }] },
   { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
-  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#181818" }] },
-  { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
-  { featureType: "poi.park", elementType: "labels.text.stroke", stylers: [{ color: "#1b1b1b" }] },
+  { featureType: "poi", elementType: "geometry", stylers: [{ color: "#181818" }] },
   { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#2c2c2c" }] },
   { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#8a8a8a" }] },
-  { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#373737" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#3c3c3c" }] },
-  { featureType: "road.highway.controlled_access", elementType: "geometry", stylers: [{ color: "#4e4e4e" }] },
-  { featureType: "road.local", elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
-  { featureType: "transit", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
   { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] },
   { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#3d3d3d" }] }
 ];
 
-// 地図上の投稿ピン
 const PostOverlay = ({ post, onClick, zoomLevel }) => {
   const baseZoom = 15;
   const scale = Math.pow(1.2, zoomLevel - baseZoom);
@@ -52,11 +39,6 @@ const PostOverlay = ({ post, onClick, zoomLevel }) => {
   const currentImageHeight = Math.min(Math.max(80 * scale, 40), 180);
   const currentFontSize = Math.min(Math.max(12 * scale, 10), 18);
   const currentUsernameFontSize = Math.min(Math.max(10 * scale, 8), 14);
-  const currentIconSize = Math.min(Math.max(14 * scale, 10), 20);
-
-  // 仮のいいね・コメント数（実際のデータがあればそれを使用）
-  const likeCount = post.likeCount || 0;
-  const commentCount = post.commentCount || 0;
 
   return (
     <div
@@ -64,47 +46,21 @@ const PostOverlay = ({ post, onClick, zoomLevel }) => {
       onClick={onClick}
       style={{ zIndex: Math.floor(zoomLevel) + 10 }}
     >
-      <div
-        className="bg-[#1a1a1a] border border-[#Decbb7]/30 rounded-sm shadow-[0_4px_20px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col"
-        style={{ width: `${currentWidth}px` }}
-      >
-        <img src={post.imageUrl} alt={post.caption} className="w-full object-cover grayscale hover:grayscale-0 transition-all duration-500" style={{ height: `${currentImageHeight}px` }} />
+      <div className="bg-[#1a1a1a] border border-[#Decbb7]/30 rounded-sm shadow-[0_4px_20px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col" style={{ width: `${currentWidth}px` }}>
+        {/* ★修正: grayscale クラスを削除しました */}
+        <img 
+          src={post.imageUrl} 
+          alt={post.caption} 
+          className="w-full object-cover transition-all duration-500" 
+          style={{ height: `${currentImageHeight}px` }} 
+        />
         <div className="mt-1 p-1">
           <p className="truncate text-[#Decbb7] font-display font-bold leading-tight tracking-wide" style={{ fontSize: `${currentFontSize}px` }}>{post.caption}</p>
           <p className="truncate text-gray-500 text-right leading-tight mb-1 font-sans" style={{ fontSize: `${currentUsernameFontSize}px` }}>by {post.username}</p>
-          <div className="flex items-center justify-end space-x-2 text-gray-500">
-            <div className="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="text-pink-500" fill="currentColor" viewBox="0 0 24 24" style={{ width: currentIconSize, height: currentIconSize }}>
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-              </svg>
-              <span className="ml-0.5 font-bold font-display" style={{ fontSize: `${currentUsernameFontSize}px` }}>{likeCount}</span>
-            </div>
-            <div className="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="text-blue-500" fill="currentColor" viewBox="0 0 24 24" style={{ width: currentIconSize, height: currentIconSize }}>
-                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-              </svg>
-              <span className="ml-0.5 font-bold font-display" style={{ fontSize: `${currentUsernameFontSize}px` }}>{commentCount}</span>
-            </div>
-          </div>
         </div>
       </div>
-      {/* Triangle pointer */}
       <div className="w-0 h-0 border-l-transparent border-r-transparent border-t-[#Decbb7]/30 mx-auto"
-        style={{
-          borderLeftWidth: `${8 * scale}px`,
-          borderRightWidth: `${8 * scale}px`,
-          borderTopWidth: `${8 * scale}px`
-        }}>
-        <div className="w-0 h-0 border-l-transparent border-r-transparent border-t-[#1a1a1a] -mt-[9px] -ml-[7px]"
-          style={{
-             borderLeftWidth: `${7 * scale}px`,
-             borderRightWidth: `${7 * scale}px`,
-             borderTopWidth: `${7 * scale}px`,
-             marginTop: `-${(8 * scale) + 1}px`,
-             marginLeft: `-${7 * scale}px`
-          }}
-        />
-      </div>
+        style={{ borderLeftWidth: `${8 * scale}px`, borderRightWidth: `${8 * scale}px`, borderTopWidth: `${8 * scale}px` }} />
     </div>
   );
 };
@@ -116,7 +72,7 @@ export default function Map() {
   });
 
   const navigate = useNavigate();
-  const fileInputRef = useRef(null); // カメラ起動用のref（将来の機能用に保持）
+  const fileInputRef = useRef(null);
 
   const [map, setMap] = useState(null);
   const [currentLocation, setCurrentLocation] = useState(null);
@@ -155,18 +111,28 @@ export default function Map() {
     if (map) setZoomLevel(map.getZoom());
   }, [map]);
 
-  // カメラで撮影された後の処理（将来の機能用に保持）
+  // 現在地に戻る関数
+  const panToCurrentLocation = () => {
+    if (map && currentLocation) {
+      map.panTo(currentLocation);
+      map.setZoom(16);
+    } else {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setCurrentLocation(loc);
+          map?.panTo(loc);
+          map?.setZoom(16);
+        });
+      }
+    }
+  };
+
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    // 撮影されたファイルを持って投稿ページへ移動
     navigate('/post', { state: { selectedFile: file } });
-    e.target.value = ''; // reset
-  };
-
-  // PostUploader成功時のハンドラー
-  const handlePostSuccess = () => {
-    // 必要に応じて処理を追加
+    e.target.value = ''; 
   };
 
   if (loadError) return <div className="flex items-center justify-center h-screen bg-black text-white font-display">Error loading maps</div>;
@@ -176,7 +142,6 @@ export default function Map() {
     <div className="relative w-full h-[100dvh] overflow-hidden bg-black">
       <Header />
 
-      {/* 隠しカメラ起動ボタン（将来の機能用に保持） */}
       <input
         type="file"
         ref={fileInputRef}
@@ -186,14 +151,37 @@ export default function Map() {
         className="hidden"
       />
 
-      {/* Post Button - Moves with drawer */}
+      {/* ■ 投稿ボタン（左下） */}
       <div className={`absolute left-6 z-40 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isPostListOpen ? 'bottom-[calc(80vh+20px)]' : 'bottom-28'}`}>
-        <PostUploader onPostSuccess={handlePostSuccess} />
+        <button
+          onClick={() => fileInputRef.current.click()}
+          className="bg-[#Decbb7] text-[#1a1a1a] rounded-full p-4 shadow-[0_0_30px_rgba(222,203,183,0.4)] transition-all transform hover:scale-110 flex items-center justify-center border-2 border-transparent hover:border-white/20"
+          style={{ width: '64px', height: '64px' }}
+        >
+          {/* カメラアイコン */}
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+      </div>
+
+      {/* ■ 現在地に戻るボタン（右下） */}
+      <div className={`absolute right-6 z-40 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isPostListOpen ? 'bottom-[calc(80vh+20px)]' : 'bottom-28'}`}>
+        <button
+          onClick={panToCurrentLocation}
+          className="bg-[#1a1a1a] text-[#Decbb7] border border-[#Decbb7]/50 rounded-full p-4 shadow-lg transition-all transform hover:scale-110 active:scale-95 flex items-center justify-center"
+          style={{ width: '64px', height: '64px' }}
+        >
+          {/* ナビゲーションアローアイコン */}
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L2 22l10-4 10 4L12 2z" />
+          </svg>
+        </button>
       </div>
 
       <PostList posts={posts} onOpenStateChange={setIsPostListOpen} />
 
-      {/* Google Map */}
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={currentLocation || defaultCenter}

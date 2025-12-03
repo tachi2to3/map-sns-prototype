@@ -34,7 +34,7 @@ export default function PostPage() {
     }
   }, []);
 
-  // ★修正: 住所を「日本語」で取得する設定を追加
+  // 住所取得（日本語）
   useEffect(() => {
     if (location && isLoaded && window.google) {
       const fetchAddress = async () => {
@@ -42,21 +42,19 @@ export default function PostPage() {
           const geocoder = new window.google.maps.Geocoder();
           const result = await geocoder.geocode({ 
             location: { lat: location.lat, lng: location.lng },
-            language: 'ja' // ★ここを追加：強制的に日本語にする
+            language: 'ja' 
           });
           
           if (result.results && result.results[0]) {
             let address = result.results[0].formatted_address;
-            // "日本、" や郵便番号を削除してスッキリさせる
             address = address.replace(/^日本、/, ''); 
             address = address.replace(/〒\d{3}-\d{4}\s*/, ''); 
-            
             setLocationSource(address);
           } else {
             setLocationSource("住所不明");
           }
         } catch (error) {
-          console.error("住所の取得に失敗:", error);
+          console.error("住所取得エラー:", error);
           setLocationSource("位置情報のみ");
         }
       };
@@ -93,7 +91,6 @@ export default function PostPage() {
       const gps = await exifr.gps(originalFile);
       if (gps && gps.latitude && gps.longitude) {
         setLocation({ lat: gps.latitude, lng: gps.longitude });
-        // locationSourceはuseEffectで住所に上書きされます
         setIsLoadingLocation(false);
       } else {
         fetchCurrentPosition();
@@ -136,13 +133,13 @@ export default function PostPage() {
         caption: caption,
         lat: location.lat,
         lng: location.lng,
-        locationSource: locationSource, // 日本語の住所が保存されます
+        locationSource: locationSource,
         userId: currentUser.uid,
         username: currentUser.displayName || "名無し",
+        userIcon: currentUser.photoURL || "",
         createdAt: serverTimestamp(),
       });
 
-      alert("投稿しました！");
       navigate('/');
     } catch (error) {
       console.error(error);
@@ -152,21 +149,23 @@ export default function PostPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a] text-[#Decbb7] flex flex-col font-sans">
-      <div className="h-16 flex items-center justify-between px-4 border-b border-[#Decbb7]/20 bg-[#1a1a1a] sticky top-0 z-50">
-        <button 
-          onClick={() => navigate('/')} 
-          className="text-sm font-bold opacity-70 hover:opacity-100 transition"
-        >
-          キャンセル
-        </button>
-        <h1 className="font-bold text-lg tracking-wider">NEW RECORD</h1>
-        <div className="w-16"></div>
-      </div>
+    <div className="min-h-screen bg-[#1a1a1a] text-[#Decbb7] flex flex-col font-sans relative">
+      
+      {/* ■ キャンセルボタン（ヘッダーバーの代わり） */}
+      <button 
+        onClick={() => navigate('/')} 
+        className="absolute top-6 left-6 z-50 w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10 text-white hover:bg-white/10 transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
 
-      <div className="flex-1 p-6 flex flex-col items-center max-w-md mx-auto w-full">
+      {/* ■ コンテンツエリア */}
+      <div className="flex-1 p-6 flex flex-col items-center max-w-md mx-auto w-full pt-20">
         
-        <div className="w-full aspect-square bg-white/5 rounded-2xl border-2 border-[#Decbb7]/20 border-dashed flex items-center justify-center overflow-hidden relative mb-3">
+        {/* 画像プレビュー */}
+        <div className="w-full aspect-square bg-white/5 rounded-2xl border-2 border-[#Decbb7]/20 border-dashed flex items-center justify-center overflow-hidden relative mb-4 shadow-2xl">
           {previewUrl ? (
             <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
           ) : (
@@ -176,6 +175,7 @@ export default function PostPage() {
           )}
         </div>
 
+        {/* ★再撮影ボタン */}
         <button
           onClick={() => fileInputRef.current.click()}
           className="flex items-center space-x-2 text-[#Decbb7] opacity-80 hover:opacity-100 hover:bg-white/5 px-4 py-2 rounded-full transition mb-6"
@@ -184,9 +184,10 @@ export default function PostPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          <span className="text-sm font-bold underline">写真を撮り直す</span>
+          <span className="text-sm font-bold underline cursor-pointer">写真を撮り直す</span>
         </button>
 
+        {/* 隠しinput（カメラ起動用） */}
         <input 
           type="file" 
           ref={fileInputRef} 
@@ -196,33 +197,42 @@ export default function PostPage() {
           className="hidden" 
         />
 
-        <div className="w-full mb-2 text-xs font-bold uppercase tracking-wider text-center h-6 overflow-hidden text-ellipsis whitespace-nowrap px-4">
+        {/* 住所表示エリア */}
+        <div className="w-full mb-4 text-xs font-bold font-sans tracking-wider text-center h-6 overflow-hidden text-ellipsis whitespace-nowrap px-4">
           {isLoadingLocation ? (
-            <span className="text-orange-400 animate-pulse">📡 GPS取得中...</span>
+            <span className="text-orange-400 animate-pulse flex items-center justify-center gap-2">
+              <span className="w-2 h-2 bg-orange-400 rounded-full animate-ping"/> 住所を取得中...
+            </span>
           ) : location ? (
-            <span className="text-[#Decbb7]">📍 {locationSource}</span>
+            <span className="text-[#Decbb7] flex items-center justify-center gap-2">
+              📍 {locationSource}
+            </span>
           ) : (
-            <span className="text-red-400 opacity-50">LOCATION MISSING</span>
+            <span className="text-red-400 opacity-50 flex items-center justify-center gap-2">
+              ⚠ 位置情報なし
+            </span>
           )}
         </div>
 
+        {/* キャプション入力 */}
         <textarea
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
           placeholder="この場所での思い出..."
-          className="w-full bg-white/5 text-[#Decbb7] p-4 rounded-xl mb-8 resize-none focus:outline-none focus:bg-white/10 transition border border-transparent focus:border-[#Decbb7]/30 h-32 placeholder-[#Decbb7]/30"
+          className="w-full bg-white/5 text-[#Decbb7] p-4 rounded-xl mb-8 resize-none focus:outline-none focus:bg-white/10 transition border border-transparent focus:border-[#Decbb7]/30 h-32 placeholder-[#Decbb7]/30 font-sans"
         />
 
+        {/* 投稿ボタン */}
         <button
           onClick={handleUpload}
           disabled={!location || isUploading || !file}
-          className={`w-full py-4 font-bold rounded-full text-[#1a1a1a] text-lg transition-all shadow-xl ${
+          className={`w-full py-4 font-bold rounded-full text-[#1a1a1a] text-lg transition-all shadow-[0_0_20px_rgba(222,203,183,0.3)] font-display tracking-wide ${
             location && file && !isUploading
               ? 'bg-[#Decbb7] hover:bg-white hover:scale-105 active:scale-95' 
-              : 'bg-gray-700 cursor-not-allowed opacity-50'
+              : 'bg-white/10 text-white/30 cursor-not-allowed opacity-50 shadow-none'
           }`}
         >
-          {isUploading ? "保存中..." : "記録を残す"}
+          {isUploading ? "SAVING..." : "SHARE RECORD"}
         </button>
       </div>
     </div>
