@@ -11,15 +11,16 @@ export default function Header() {
   return (
     <>
       <header className="absolute top-0 left-0 w-full z-50 pointer-events-none">
-        <div className="bg-gradient-to-b from-black/80 to-transparent pb-12 pt-4 px-4 flex items-center justify-between pointer-events-auto">
-          <h1 className="text-white font-display font-bold text-xl tracking-widest drop-shadow-md">
+        {/* ★修正: パディングを減らし(h-16)、スリムなヘッダーに変更 */}
+        <div className="bg-gradient-to-b from-black/90 to-transparent h-20 px-5 flex items-start pt-4 justify-between pointer-events-auto">
+          <h1 className="text-white font-display font-bold text-lg tracking-widest drop-shadow-md mt-1">
             MAP SNS
           </h1>
 
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-md border border-white/10 transition-all active:scale-95"
+              className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-md border border-white/10 transition-all active:scale-95"
               aria-label="設定"
             >
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -30,7 +31,7 @@ export default function Header() {
 
             <button
               onClick={() => setIsProfileOpen(true)}
-              className="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-md border border-white/10 transition-all active:scale-95 overflow-hidden"
+              className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-md border border-white/10 transition-all active:scale-95 overflow-hidden"
               aria-label="プロフィール"
             >
               {currentUser?.photoURL ? (

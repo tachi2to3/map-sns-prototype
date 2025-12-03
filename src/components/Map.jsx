@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow, OverlayView, OverlayViewF } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow, OverlayView, OverlayViewF, MarkerClustererF } from '@react-google-maps/api';
 import { db } from '../firebase';
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { useNavigate } from 'react-router-dom';
@@ -32,6 +32,28 @@ const mapStyles = [
   { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#3d3d3d" }] }
 ];
 
+// クラスタアイコン
+const clusterIconSvg = encodeURIComponent(`
+  <svg xmlns="http://www.w3.org/2000/svg" width="66" height="66" viewBox="0 0 66 66">
+    <circle cx="33" cy="33" r="32" fill="none" stroke="#Decbb7" stroke-width="1" opacity="0.6"/>
+    <circle cx="33" cy="33" r="28" fill="#Decbb7" stroke="#1a1a1a" stroke-width="4"/>
+  </svg>
+`);
+const clusterIconUrl = `data:image/svg+xml;charset=UTF-8,${clusterIconSvg}`;
+
+const clusterStyles = [
+  {
+    textColor: '#1a1a1a', 
+    url: clusterIconUrl,
+    height: 66,
+    width: 66,
+    textSize: 18,
+    fontWeight: 'bold',
+    fontFamily: 'sans-serif'
+  }
+];
+
+// 投稿詳細ピン
 const PostOverlay = ({ post, onClick, zoomLevel }) => {
   const baseZoom = 15;
   const scale = Math.pow(1.2, zoomLevel - baseZoom);
@@ -47,13 +69,7 @@ const PostOverlay = ({ post, onClick, zoomLevel }) => {
       style={{ zIndex: Math.floor(zoomLevel) + 10 }}
     >
       <div className="bg-[#1a1a1a] border border-[#Decbb7]/30 rounded-sm shadow-[0_4px_20px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col" style={{ width: `${currentWidth}px` }}>
-        {/* ★修正: grayscale クラスを削除しました */}
-        <img 
-          src={post.imageUrl} 
-          alt={post.caption} 
-          className="w-full object-cover transition-all duration-500" 
-          style={{ height: `${currentImageHeight}px` }} 
-        />
+        <img src={post.imageUrl} alt={post.caption} className="w-full object-cover transition-all duration-500" style={{ height: `${currentImageHeight}px` }} />
         <div className="mt-1 p-1">
           <p className="truncate text-[#Decbb7] font-display font-bold leading-tight tracking-wide" style={{ fontSize: `${currentFontSize}px` }}>{post.caption}</p>
           <p className="truncate text-gray-500 text-right leading-tight mb-1 font-sans" style={{ fontSize: `${currentUsernameFontSize}px` }}>by {post.username}</p>
@@ -111,7 +127,6 @@ export default function Map() {
     if (map) setZoomLevel(map.getZoom());
   }, [map]);
 
-  // 現在地に戻る関数
   const panToCurrentLocation = () => {
     if (map && currentLocation) {
       map.panTo(currentLocation);
@@ -151,29 +166,25 @@ export default function Map() {
         className="hidden"
       />
 
-      {/* ■ 投稿ボタン（左下） */}
       <div className={`absolute left-6 z-40 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isPostListOpen ? 'bottom-[calc(80vh+20px)]' : 'bottom-28'}`}>
         <button
           onClick={() => fileInputRef.current.click()}
           className="bg-[#Decbb7] text-[#1a1a1a] rounded-full p-4 shadow-[0_0_30px_rgba(222,203,183,0.4)] transition-all transform hover:scale-110 flex items-center justify-center border-2 border-transparent hover:border-white/20"
           style={{ width: '64px', height: '64px' }}
         >
-          {/* カメラアイコン */}
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
         </button>
       </div>
 
-      {/* ■ 現在地に戻るボタン（右下） */}
       <div className={`absolute right-6 z-40 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isPostListOpen ? 'bottom-[calc(80vh+20px)]' : 'bottom-28'}`}>
         <button
           onClick={panToCurrentLocation}
           className="bg-[#1a1a1a] text-[#Decbb7] border border-[#Decbb7]/50 rounded-full p-4 shadow-lg transition-all transform hover:scale-110 active:scale-95 flex items-center justify-center"
           style={{ width: '64px', height: '64px' }}
         >
-          {/* ナビゲーションアローアイコン */}
           <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2L2 22l10-4 10 4L12 2z" />
           </svg>
@@ -197,39 +208,64 @@ export default function Map() {
           backgroundColor: '#000000'
         }}
       >
+        {/* ★修正：pointer-events-none を追加してクリック判定を無効化 */}
         {currentLocation && (
-          <Marker
+          <OverlayViewF
             position={currentLocation}
-            zIndex={999}
-            icon={{
-              path: window.google.maps.SymbolPath.CIRCLE,
-              scale: 10,
-              fillColor: '#Decbb7',
-              fillOpacity: 1,
-              strokeColor: '#000000',
-              strokeWeight: 3
-            }}
-          />
+            mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+          >
+            <div 
+              className="relative flex items-center justify-center pointer-events-none" 
+              style={{ zIndex: 9999 }} 
+            >
+              <div className="absolute w-20 h-20 bg-[#Decbb7] rounded-full opacity-30 animate-ping"></div>
+              <div className="relative w-5 h-5 bg-[#Decbb7] border-2 border-[#1a1a1a] rounded-full shadow-[0_0_15px_#Decbb7] z-10"></div>
+            </div>
+          </OverlayViewF>
         )}
 
-        {posts.map((post) => {
-          const marker = <Marker key={`marker-${post.id}`} position={{ lat: post.lat, lng: post.lng }} onClick={() => setSelectedPost(post)} />;
-          const isSelected = selectedPost && selectedPost.id === post.id;
-          const showOverlay = zoomLevel >= SHOW_POST_ZOOM_LEVEL && !isSelected;
-
-          if (showOverlay) {
-            return (
-              <React.Fragment key={post.id}>
-                {marker}
-                <OverlayViewF position={{ lat: post.lat, lng: post.lng }} mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}>
-                  <PostOverlay post={post} onClick={() => setSelectedPost(post)} zoomLevel={zoomLevel} />
-                </OverlayViewF>
-              </React.Fragment>
-            );
-          } else {
-            return marker;
-          }
-        })}
+        {zoomLevel < SHOW_POST_ZOOM_LEVEL ? (
+          <MarkerClustererF styles={clusterStyles}>
+            {(clusterer) => (
+              posts.map((post) => (
+                <Marker
+                  key={`cluster-marker-${post.id}`}
+                  position={{ lat: post.lat, lng: post.lng }}
+                  clusterer={clusterer}
+                  icon={{
+                    path: window.google.maps.SymbolPath.CIRCLE,
+                    scale: 7,
+                    fillColor: '#Decbb7',
+                    fillOpacity: 1,
+                    strokeColor: '#1a1a1a',
+                    strokeWeight: 2
+                  }}
+                  onClick={() => {
+                    map.panTo({ lat: post.lat, lng: post.lng });
+                    map.setZoom(16); 
+                    setSelectedPost(post);
+                  }}
+                />
+              ))
+            )}
+          </MarkerClustererF>
+        ) : (
+          posts.map((post) => (
+            <React.Fragment key={post.id}>
+              <Marker 
+                position={{ lat: post.lat, lng: post.lng }}
+                opacity={0}
+                onClick={() => setSelectedPost(post)}
+              />
+              <OverlayViewF 
+                position={{ lat: post.lat, lng: post.lng }} 
+                mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+              >
+                <PostOverlay post={post} onClick={() => setSelectedPost(post)} zoomLevel={zoomLevel} />
+              </OverlayViewF>
+            </React.Fragment>
+          ))
+        )}
 
         {selectedPost && (
           <InfoWindow
