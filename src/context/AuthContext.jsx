@@ -42,13 +42,20 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     console.log("AuthContext: Start monitoring auth state...");
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log("AuthContext: Auth state changed:", user);
+      console.log("AuthContext: Auth state changed:", user?.uid);
 
       if (user) {
         try {
           // Firestoreからユーザー情報を取得
           const userDocRef = doc(db, "users", user.uid);
           const userDocSnap = await getDoc(userDocRef);
+
+          // 【重要】Race Condition対策
+          // 非同期処理中に現在の認証ユーザーが変わっていないか(ログアウトしていないか)確認
+          if (auth.currentUser?.uid !== user.uid) {
+            console.warn("AuthContext: User changed during fetch. Ignoring result.");
+            return;
+          }
 
           if (userDocSnap.exists()) {
             // Firestoreのデータをマージ
@@ -64,8 +71,11 @@ export function AuthProvider({ children }) {
             setCurrentUser(user);
           }
         } catch (error) {
-          console.error("Error fetching user data from Firestore:", error);
-          setCurrentUser(user);
+          // エラー発生時も、ユーザーが変わっていなければstateを更新
+          if (auth.currentUser?.uid === user.uid) {
+            console.error("Error fetching user data from Firestore:", error);
+            setCurrentUser(user);
+          }
         }
       } else {
         setCurrentUser(null); // ログアウト時
@@ -77,7 +87,9 @@ export function AuthProvider({ children }) {
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   // Contextとして提供する値
