@@ -51,7 +51,7 @@ export function AuthProvider({ children }) {
           const userDocSnap = await getDoc(userDocRef);
 
           // 【重要】Race Condition対策
-          // 非同期処理中に現在の認証ユーザーが変わっていないか(ログアウトしていないか)確認
+          // 非同期処理中に認証ユーザーが変更されていないか確認（ログアウトまたは別ユーザーへの切り替え）
           if (auth.currentUser?.uid !== user.uid) {
             console.warn("AuthContext: User changed during fetch. Ignoring result.");
             return;
