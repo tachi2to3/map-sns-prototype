@@ -3,11 +3,18 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, addDoc, deleteDoc, setDoc, onSnapshot, query, orderBy, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
+import { useJsApiLoader } from '@react-google-maps/api';
+import FollowButton from './FollowButton';
 
 export default function PostDetailPage() {
-  const { id } = useParams(); // URLからIDを取得
+  const { id } = useParams();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+  });
 
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
@@ -15,21 +22,22 @@ export default function PostDetailPage() {
   const [likes, setLikes] = useState([]);
   const [isLiked, setIsLiked] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [displayAddress, setDisplayAddress] = useState("");
 
-  // 投稿データの取得
   useEffect(() => {
     const fetchPost = async () => {
       try {
         const docRef = doc(db, "posts", id);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setPost({ id: docSnap.id, ...docSnap.data() });
+          const data = { id: docSnap.id, ...docSnap.data() };
+          setPost(data);
+          setDisplayAddress(data.locationSource || "");
         } else {
-          console.log("No such document!");
           navigate('/');
         }
       } catch (e) {
-        console.error("Error fetching post:", e);
+        console.error("Error:", e);
       } finally {
         setLoading(false);
       }
@@ -37,43 +45,47 @@ export default function PostDetailPage() {
     fetchPost();
   }, [id, navigate]);
 
-  // いいね・コメントのリアルタイム監視
+  // 住所情報の取得
+  useEffect(() => {
+    if (post && isLoaded && window.google && post.lat && post.lng) {
+      if (!post.locationSource || post.locationSource === "現在地" || post.locationSource === "写真の位置情報") {
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ location: { lat: post.lat, lng: post.lng }, language: 'ja' })
+          .then((response) => {
+            if (response.results[0]) {
+              let address = response.results[0].formatted_address;
+              address = address.replace(/^日本、/, '').replace(/〒\d{3}-\d{4}\s*/, '');
+              setDisplayAddress(address);
+            }
+          })
+          .catch((e) => console.error("Geocoding error:", e));
+      }
+    }
+  }, [post, isLoaded]);
+
   useEffect(() => {
     if (!id) return;
-
-    // いいね
-    const unsubscribeLikes = onSnapshot(collection(db, 'posts', id, 'likes'), (snapshot) => {
-      const likesData = snapshot.docs.map(doc => doc.id);
-      setLikes(likesData);
-      setIsLiked(currentUser ? likesData.includes(currentUser.uid) : false);
+    const unsubscribeLikes = onSnapshot(collection(db, 'posts', id, 'likes'), (s) => {
+      setLikes(s.docs.map(d => d.id));
+      setIsLiked(currentUser ? s.docs.map(d => d.id).includes(currentUser.uid) : false);
     });
-
-    // コメント
     const q = query(collection(db, 'posts', id, 'comments'), orderBy('createdAt', 'asc'));
-    const unsubscribeComments = onSnapshot(q, (snapshot) => {
-      setComments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    const unsubscribeComments = onSnapshot(q, (s) => {
+      setComments(s.docs.map(d => ({ id: d.id, ...d.data() })));
     });
-
-    return () => {
-      unsubscribeLikes();
-      unsubscribeComments();
-    };
+    return () => { unsubscribeLikes(); unsubscribeComments(); };
   }, [id, currentUser]);
 
   const toggleLike = async () => {
     if (!currentUser) return;
     const likeRef = doc(db, 'posts', id, 'likes', currentUser.uid);
-    if (isLiked) {
-      await deleteDoc(likeRef);
-    } else {
-      await setDoc(likeRef, { createdAt: serverTimestamp() });
-    }
+    if (isLiked) await deleteDoc(likeRef);
+    else await setDoc(likeRef, { createdAt: serverTimestamp() });
   };
 
   const sendComment = async (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
-
     await addDoc(collection(db, 'posts', id, 'comments'), {
       text: newComment,
       userId: currentUser.uid,
@@ -88,7 +100,6 @@ export default function PostDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-[#Decbb7] flex flex-col font-sans">
-      {/* ヘッダー */}
       <div className="h-16 flex items-center px-4 border-b border-[#Decbb7]/20 bg-[#1a1a1a] sticky top-0 z-50">
         <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -98,26 +109,37 @@ export default function PostDetailPage() {
         <h1 className="font-bold text-lg ml-2 tracking-wider font-display">RECORD</h1>
       </div>
 
-      {/* メインコンテンツ */}
       <div className="flex-1 overflow-y-auto pb-24">
-        {/* 画像 */}
         <div className="w-full bg-black">
           <img src={post.imageUrl} alt="" className="w-full max-h-[60vh] object-contain mx-auto" />
         </div>
 
         <div className="p-6 space-y-6">
-          {/* キャプション・ユーザー */}
           <div>
-            <div className="flex justify-between items-start mb-2 text-xs text-[#Decbb7]/60 font-sans">
+            <div className="flex justify-between items-center mb-4 text-xs text-[#Decbb7]/60 font-sans border-b border-[#Decbb7]/10 pb-4">
               <span className="flex items-center gap-1">
-                📍 {post.locationSource || "Location info"}
+                📍 {displayAddress || "Location info"}
               </span>
-              <span>by {post.username}</span>
+              
+              <div className="flex items-center gap-3">
+                {/* ★追加: ユーザーアイコン */}
+                <div className="flex items-center gap-2">
+                  {post.userIcon ? (
+                    <img src={post.userIcon} alt="" className="w-6 h-6 rounded-full object-cover border border-[#Decbb7]/30" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center border border-white/5">
+                      <span className="text-[10px] font-bold text-white/50">{post.username?.slice(0, 1)}</span>
+                    </div>
+                  )}
+                  <span>by {post.username}</span>
+                </div>
+                
+                <FollowButton targetUserId={post.userId} />
+              </div>
             </div>
             <p className="text-lg font-bold leading-relaxed whitespace-pre-wrap">{post.caption}</p>
           </div>
 
-          {/* アクションボタン */}
           <div className="flex items-center space-x-6 border-y border-[#Decbb7]/10 py-4">
             <button onClick={toggleLike} className="flex items-center space-x-2 group">
               <svg xmlns="http://www.w3.org/2000/svg" className={`h-7 w-7 transition-colors ${isLiked ? 'text-pink-500 fill-pink-500' : 'text-[#Decbb7] group-hover:text-pink-400'}`} viewBox="0 0 24 24" stroke="currentColor" fill={isLiked ? "currentColor" : "none"}>
@@ -133,7 +155,6 @@ export default function PostDetailPage() {
             </div>
           </div>
 
-          {/* コメント一覧 */}
           <div>
             <h3 className="text-sm font-bold text-[#Decbb7]/50 mb-4 font-display tracking-widest">COMMENTS</h3>
             <div className="space-y-4">
@@ -149,7 +170,6 @@ export default function PostDetailPage() {
         </div>
       </div>
 
-      {/* コメント入力フォーム */}
       <div className="fixed bottom-0 left-0 w-full bg-[#1a1a1a]/95 backdrop-blur-md border-t border-[#Decbb7]/20 p-4 pb-safe">
         <form onSubmit={sendComment} className="flex items-center space-x-3 max-w-md mx-auto">
           <input 

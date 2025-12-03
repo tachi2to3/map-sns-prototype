@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import PostList from './PostList';
 import PostDetail from './PostDetail';
 import Header from './Header';
+import FollowButton from './FollowButton';
 
 // ■■■ スタイル定義 ■■■
 const containerStyle = {
@@ -32,7 +33,6 @@ const mapStyles = [
   { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#3d3d3d" }] }
 ];
 
-// クラスタアイコン
 const clusterIconSvg = encodeURIComponent(`
   <svg xmlns="http://www.w3.org/2000/svg" width="66" height="66" viewBox="0 0 66 66">
     <circle cx="33" cy="33" r="32" fill="none" stroke="#Decbb7" stroke-width="1" opacity="0.6"/>
@@ -53,14 +53,23 @@ const clusterStyles = [
   }
 ];
 
-// 投稿詳細ピン
+const pinIconSvg = encodeURIComponent(`
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+    <path fill="#Decbb7" stroke="#1a1a1a" stroke-width="1.5" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+    <circle cx="12" cy="9" r="2.5" fill="#1a1a1a"/>
+  </svg>
+`);
+const pinIconUrl = `data:image/svg+xml;charset=UTF-8,${pinIconSvg}`;
+
+
+// ★修正: 投稿詳細ピン（カード型）
 const PostOverlay = ({ post, onClick, zoomLevel }) => {
   const baseZoom = 15;
   const scale = Math.pow(1.2, zoomLevel - baseZoom);
   const currentWidth = Math.min(Math.max(100 * scale, 60), 250);
   const currentImageHeight = Math.min(Math.max(80 * scale, 40), 180);
   const currentFontSize = Math.min(Math.max(12 * scale, 10), 18);
-  const currentUsernameFontSize = Math.min(Math.max(10 * scale, 8), 14);
+  const currentIconSize = Math.min(Math.max(16 * scale, 12), 24); // アイコンサイズ
 
   return (
     <div
@@ -72,7 +81,32 @@ const PostOverlay = ({ post, onClick, zoomLevel }) => {
         <img src={post.imageUrl} alt={post.caption} className="w-full object-cover transition-all duration-500" style={{ height: `${currentImageHeight}px` }} />
         <div className="mt-1 p-1">
           <p className="truncate text-[#Decbb7] font-display font-bold leading-tight tracking-wide" style={{ fontSize: `${currentFontSize}px` }}>{post.caption}</p>
-          <p className="truncate text-gray-500 text-right leading-tight mb-1 font-sans" style={{ fontSize: `${currentUsernameFontSize}px` }}>by {post.username}</p>
+          
+          <div className="flex justify-between items-center mt-1">
+            {/* ★変更: "by username" を アイコンに変更 */}
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] text-gray-500 font-sans">by</span>
+              {post.userIcon ? (
+                <img 
+                  src={post.userIcon} 
+                  alt={post.username} 
+                  className="rounded-full object-cover border border-[#Decbb7]/30" 
+                  style={{ width: `${currentIconSize}px`, height: `${currentIconSize}px` }}
+                />
+              ) : (
+                <div 
+                  className="rounded-full bg-white/10 flex items-center justify-center"
+                  style={{ width: `${currentIconSize}px`, height: `${currentIconSize}px` }}
+                >
+                  <span className="text-[8px] font-bold text-white/50">{post.username?.slice(0, 1)}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="transform scale-75 origin-right">
+              <FollowButton targetUserId={post.userId} />
+            </div>
+          </div>
         </div>
       </div>
       <div className="w-0 h-0 border-l-transparent border-r-transparent border-t-[#Decbb7]/30 mx-auto"
@@ -208,7 +242,6 @@ export default function Map() {
           backgroundColor: '#000000'
         }}
       >
-        {/* ★修正：pointer-events-none を追加してクリック判定を無効化 */}
         {currentLocation && (
           <OverlayViewF
             position={currentLocation}
@@ -233,17 +266,14 @@ export default function Map() {
                   position={{ lat: post.lat, lng: post.lng }}
                   clusterer={clusterer}
                   icon={{
-                    path: window.google.maps.SymbolPath.CIRCLE,
-                    scale: 7,
-                    fillColor: '#Decbb7',
-                    fillOpacity: 1,
-                    strokeColor: '#1a1a1a',
-                    strokeWeight: 2
+                    url: pinIconUrl,
+                    scaledSize: new window.google.maps.Size(40, 40),
+                    anchor: new window.google.maps.Point(20, 40)
                   }}
                   onClick={() => {
                     map.panTo({ lat: post.lat, lng: post.lng });
                     map.setZoom(16); 
-                    setSelectedPost(post);
+                    navigate(`/post/${post.id}`); 
                   }}
                 />
               ))
@@ -255,13 +285,13 @@ export default function Map() {
               <Marker 
                 position={{ lat: post.lat, lng: post.lng }}
                 opacity={0}
-                onClick={() => setSelectedPost(post)}
+                onClick={() => navigate(`/post/${post.id}`)}
               />
               <OverlayViewF 
                 position={{ lat: post.lat, lng: post.lng }} 
                 mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
               >
-                <PostOverlay post={post} onClick={() => setSelectedPost(post)} zoomLevel={zoomLevel} />
+                <PostOverlay post={post} onClick={() => navigate(`/post/${post.id}`)} zoomLevel={zoomLevel} />
               </OverlayViewF>
             </React.Fragment>
           ))
