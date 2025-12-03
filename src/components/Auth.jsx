@@ -23,20 +23,36 @@ export default function Auth() {
       setLoading(true);
 
       if (mode === 'signup') {
-        // 1. Authenticationでユーザー作成
-        const userCredential = await signup(email, password);
-        const user = userCredential.user;
+        let userCredential = null;
 
-        // 2. Firestoreにユーザー情報を保存
-        await setDoc(doc(db, "users", user.uid), {
-          username: username,
-          email: email,
-          createdAt: new Date(),
-          photoURL: ""
-        });
+        try {
+          // 1. Authenticationでユーザー作成
+          userCredential = await signup(email, password);
+          const user = userCredential.user;
 
-        alert("登録完了！");
-        navigate('/'); // ★地図へ移動
+          // 2. Firestoreにユーザー情報を保存
+          await setDoc(doc(db, "users", user.uid), {
+            username: username,
+            email: email,
+            createdAt: new Date(),
+            photoURL: ""
+          });
+
+          alert("登録完了！");
+          navigate('/'); // ★地図へ移動
+        } catch (firestoreError) {
+          // Firestore保存に失敗した場合、作成したAuthenticationアカウントを削除
+          if (userCredential && userCredential.user) {
+            try {
+              await userCredential.user.delete();
+              console.log('Authenticationアカウントをロールバックしました');
+            } catch (deleteError) {
+              console.error('ロールバック失敗:', deleteError);
+              // ロールバックに失敗した場合でも、元のエラーを優先して表示
+            }
+          }
+          throw firestoreError; // 元のエラーを再スロー
+        }
       } else {
         // ログインのみ
         await login(email, password);
