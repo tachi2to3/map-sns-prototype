@@ -87,9 +87,7 @@ export function AuthProvider({ children }) {
       setLoading(false);
     });
 
-    return () => {
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, []);
 
   // Contextとして提供する値
