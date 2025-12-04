@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
@@ -12,8 +12,15 @@ export default function Auth() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { signup, login } = useAuth();
+  const { signup, login, currentUser } = useAuth();
   const navigate = useNavigate(); // ★追加
+
+  // ★追加: ログイン状態を監視して自動遷移
+  useEffect(() => {
+    if (currentUser) {
+      navigate('/');
+    }
+  }, [currentUser, navigate]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -39,7 +46,7 @@ export default function Auth() {
           });
 
           alert("登録完了！");
-          navigate('/'); // ★地図へ移動
+          // 遷移はuseEffectで自動的に行われる
         } catch (firestoreError) {
           // Firestore保存に失敗した場合、作成したAuthenticationアカウントを削除
           if (userCredential && userCredential.user) {
@@ -57,7 +64,7 @@ export default function Auth() {
         // ログインのみ
         await login(email, password);
         // alert("ログイン完了！"); // 毎回出ると邪魔なのでコメントアウト推奨
-        navigate('/'); // ★地図へ移動
+        // 遷移はuseEffectで自動的に行われる
       }
 
     } catch (err) {
