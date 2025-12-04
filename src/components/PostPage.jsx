@@ -151,7 +151,6 @@ export default function PostPage() {
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-[#Decbb7] flex flex-col font-sans relative">
       
-      {/* ■ キャンセルボタン（ヘッダーバーの代わり） */}
       <button 
         onClick={() => navigate('/')} 
         className="absolute top-6 left-6 z-50 w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10 text-white hover:bg-white/10 transition-colors"
@@ -161,10 +160,8 @@ export default function PostPage() {
         </svg>
       </button>
 
-      {/* ■ コンテンツエリア */}
       <div className="flex-1 p-6 flex flex-col items-center max-w-md mx-auto w-full pt-20">
         
-        {/* 画像プレビュー */}
         <div className="w-full aspect-square bg-white/5 rounded-2xl border-2 border-[#Decbb7]/20 border-dashed flex items-center justify-center overflow-hidden relative mb-4 shadow-2xl">
           {previewUrl ? (
             <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
@@ -175,7 +172,7 @@ export default function PostPage() {
           )}
         </div>
 
-        {/* ★再撮影ボタン */}
+        {/* ★変更: テキストを「画像を選択し直す」に変更 */}
         <button
           onClick={() => fileInputRef.current.click()}
           className="flex items-center space-x-2 text-[#Decbb7] opacity-80 hover:opacity-100 hover:bg-white/5 px-4 py-2 rounded-full transition mb-6"
@@ -184,20 +181,18 @@ export default function PostPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          <span className="text-sm font-bold underline cursor-pointer">写真を撮り直す</span>
+          <span className="text-sm font-bold underline cursor-pointer">画像を選択し直す</span>
         </button>
 
-        {/* 隠しinput（カメラ起動用） */}
+        {/* ★修正: capture="environment" を削除し、カメラ/アルバムを選択可能に */}
         <input 
           type="file" 
           ref={fileInputRef} 
           onChange={handleFileSelect} 
           accept="image/*" 
-          capture="environment" 
           className="hidden" 
         />
 
-        {/* 住所表示エリア */}
         <div className="w-full mb-4 text-xs font-bold font-sans tracking-wider text-center h-6 overflow-hidden text-ellipsis whitespace-nowrap px-4">
           {isLoadingLocation ? (
             <span className="text-orange-400 animate-pulse flex items-center justify-center gap-2">
@@ -214,7 +209,6 @@ export default function PostPage() {
           )}
         </div>
 
-        {/* キャプション入力 */}
         <textarea
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
@@ -222,7 +216,6 @@ export default function PostPage() {
           className="w-full bg-white/5 text-[#Decbb7] p-4 rounded-xl mb-8 resize-none focus:outline-none focus:bg-white/10 transition border border-transparent focus:border-[#Decbb7]/30 h-32 placeholder-[#Decbb7]/30 font-sans"
         />
 
-        {/* 投稿ボタン */}
         <button
           onClick={handleUpload}
           disabled={!location || isUploading || !file}
