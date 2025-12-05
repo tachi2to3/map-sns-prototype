@@ -11,10 +11,10 @@ export default function Header() {
   return (
     <>
       <header className="absolute top-0 left-0 w-full z-50 pointer-events-none">
-        {/* ★修正: パディングを減らし(h-16)、スリムなヘッダーに変更 */}
         <div className="bg-gradient-to-b from-black/90 to-transparent h-20 px-5 flex items-start pt-4 justify-between pointer-events-auto">
+          {/* ★変更: タイトルを MICHIKUSA に変更 */}
           <h1 className="text-white font-display font-bold text-lg tracking-widest drop-shadow-md mt-1">
-            MAP SNS
+            MICHIKUSA
           </h1>
 
           <div className="flex items-center space-x-3">

@@ -26,16 +26,21 @@ const mapStyles = [
   { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#3d3d3d" }] }
 ];
 
-// クラスタアイコン（ベージュの丸）
-const clusterIconSvg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="66" height="66" viewBox="0 0 66 66"><circle cx="33" cy="33" r="32" fill="none" stroke="#Decbb7" stroke-width="1" opacity="0.6"/><circle cx="33" cy="33" r="28" fill="#Decbb7" stroke="#1a1a1a" stroke-width="4"/></svg>`);
+// クラスタアイコン
+const clusterIconSvg = encodeURIComponent(`
+  <svg xmlns="http://www.w3.org/2000/svg" width="66" height="66" viewBox="0 0 66 66">
+    <circle cx="33" cy="33" r="32" fill="none" stroke="#Decbb7" stroke-width="1" opacity="0.6"/>
+    <circle cx="33" cy="33" r="28" fill="#Decbb7" stroke="#1a1a1a" stroke-width="4"/>
+  </svg>
+`);
 const clusterIconUrl = `data:image/svg+xml;charset=UTF-8,${clusterIconSvg}`;
 const clusterStyles = [{ textColor: '#1a1a1a', url: clusterIconUrl, height: 66, width: 66, textSize: 18, fontWeight: 'bold', fontFamily: 'sans-serif' }];
 
-// ピンアイコン（ベージュのピン）
+// ピンアイコン
 const pinIconSvg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48"><path fill="#Decbb7" stroke="#1a1a1a" stroke-width="1.5" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5" fill="#1a1a1a"/></svg>`);
 const pinIconUrl = `data:image/svg+xml;charset=UTF-8,${pinIconSvg}`;
 
-// スタックマーカー（画像まとめ）
+// スタックマーカー
 const StackMarker = ({ posts, onClick }) => {
   const count = posts.length;
   const topImage = posts[0].imageUrl;
@@ -96,7 +101,7 @@ const CollectionModal = ({ posts, onClose, navigate }) => {
   );
 };
 
-// 投稿詳細ピン（カード型）
+// 投稿詳細ピン
 const PostOverlay = ({ post, onClick, zoomLevel }) => {
   const baseZoom = 15;
   const scale = Math.pow(1.2, zoomLevel - baseZoom);
@@ -154,6 +159,10 @@ export default function Map() {
   const [isPostListOpen, setIsPostListOpen] = useState(false);
   const [collectionModalPosts, setCollectionModalPosts] = useState(null);
 
+  // ズームコントロール管理
+  const [sliderValue, setSliderValue] = useState(0);
+  const startZoomRef = useRef(15);
+
   const SHOW_POST_ZOOM_LEVEL = 15;
 
   useEffect(() => {
@@ -165,27 +174,22 @@ export default function Map() {
     return () => unsubscribe();
   }, []);
 
-  // ズームイン時（>=15）のためのグルーピング
   const groupedPosts = useMemo(() => {
-    // ズームアウト時はMarkerClustererに任せるので、計算不要（空配列でもOKだが、念のため計算しておく）
     if (zoomLevel < SHOW_POST_ZOOM_LEVEL) return [];
 
     const groups = {};
     let precision;
-
-    if (zoomLevel < 16) precision = 0.002; // 近所
-    else if (zoomLevel < 18) precision = 0.0005;// 路地
-    else precision = 0.0001;                    // 最大ズーム
+    if (zoomLevel < 16) precision = 0.002; 
+    else if (zoomLevel < 18) precision = 0.0005;
+    else precision = 0.0001;
 
     posts.forEach(post => {
       const latKey = Math.floor(post.lat / precision) * precision;
       const lngKey = Math.floor(post.lng / precision) * precision;
       const key = `${latKey}-${lngKey}`;
-      
       if (!groups[key]) groups[key] = [];
       groups[key].push(post);
     });
-
     return Object.values(groups);
   }, [posts, zoomLevel]);
 
@@ -204,12 +208,38 @@ export default function Map() {
   }, []);
 
   const onUnmount = useCallback(() => setMap(null), []);
-  const handleZoomChanged = useCallback(() => { if (map) setZoomLevel(map.getZoom()); }, [map]);
+
+  const handleZoomChanged = useCallback(() => {
+    if (map) setZoomLevel(map.getZoom());
+  }, [map]);
+
+  const handleMapClick = () => setSelectedPost(null);
+
   const panToCurrentLocation = () => {
     if (map && currentLocation) { map.panTo(currentLocation); map.setZoom(16); } 
     else if (navigator.geolocation) { navigator.geolocation.getCurrentPosition((pos) => { const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }; setCurrentLocation(loc); map?.panTo(loc); map?.setZoom(16); }); }
   };
+  
   const handleFileSelect = (e) => { const file = e.target.files[0]; if (!file) return; navigate('/post', { state: { selectedFile: file } }); e.target.value = ''; };
+
+  // スライダー操作ロジック
+  const handleSliderStart = () => {
+    if (map) startZoomRef.current = map.getZoom();
+  };
+
+  const handleSliderChange = (e) => {
+    const val = parseInt(e.target.value, 10);
+    setSliderValue(val);
+    if (map) {
+      const newZoom = startZoomRef.current + val;
+      map.setZoom(newZoom);
+    }
+  };
+
+  const handleSliderEnd = () => {
+    setSliderValue(0);
+    if (map) startZoomRef.current = map.getZoom();
+  };
 
   if (loadError) return <div className="flex items-center justify-center h-screen bg-black text-white font-display">Error loading maps</div>;
   if (!isLoaded) return <div className="flex items-center justify-center h-screen bg-black text-white font-display">Loading Maps...</div>;
@@ -219,6 +249,44 @@ export default function Map() {
       <Header />
 
       <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
+
+      {/* ★修正: 視覚的な「つまみ」 + 透明な操作判定 */}
+      <div 
+        className="absolute right-4 top-1/2 -translate-y-1/2 z-40 h-64 w-12 flex items-center justify-center"
+      >
+        {/* 見た目用のつまみ (sliderValueに合わせて動く) */}
+        <div 
+          className="absolute w-10 h-10 bg-[#Decbb7] rounded-full shadow-lg pointer-events-none transition-transform duration-75 ease-out flex items-center justify-center border-2 border-[#1a1a1a]"
+          style={{ 
+            // 上(+値)に行くとY座標はマイナスになるので -sliderValue
+            // 係数を掛けて移動距離を調整 (例: * 8px)
+            transform: `translateY(${-sliderValue * 10}px)` 
+          }}
+        >
+          {/* つまみの中の装飾（+/-アイコンなど） */}
+          <div className="flex flex-col gap-0.5 opacity-50">
+             <div className="w-4 h-0.5 bg-[#1a1a1a] rounded-full"></div>
+             <div className="w-4 h-0.5 bg-[#1a1a1a] rounded-full"></div>
+             <div className="w-4 h-0.5 bg-[#1a1a1a] rounded-full"></div>
+          </div>
+        </div>
+
+        {/* 透明なinput (判定用) */}
+        <input
+          type="range"
+          min="-10" 
+          max="10"
+          step="1"
+          value={sliderValue}
+          onChange={handleSliderChange}
+          onTouchStart={handleSliderStart}
+          onMouseDown={handleSliderStart}
+          onTouchEnd={handleSliderEnd}
+          onMouseUp={handleSliderEnd}
+          className="w-full h-full opacity-0 cursor-pointer"
+          style={{ writingMode: 'bt-lr', WebkitAppearance: 'slider-vertical' }}
+        />
+      </div>
 
       <div className={`absolute left-6 z-40 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isPostListOpen ? 'bottom-[calc(80vh+20px)]' : 'bottom-28'}`}>
         <button onClick={() => fileInputRef.current.click()} className="bg-[#Decbb7] text-[#1a1a1a] rounded-full p-4 shadow-[0_0_30px_rgba(222,203,183,0.4)] transition-all transform hover:scale-110 flex items-center justify-center border-2 border-transparent hover:border-white/20" style={{ width: '64px', height: '64px' }}>
@@ -244,9 +312,8 @@ export default function Map() {
           </OverlayViewF>
         )}
 
-        {/* ★変更：ズームレベルで表示モードを分岐 */}
+        {/* ズームアウト時は MarkerClustererF を使用して画像を再現 */}
         {zoomLevel < SHOW_POST_ZOOM_LEVEL ? (
-          // ズームアウト時：MarkerClustererFを使用（丸でまとめる）
           <MarkerClustererF styles={clusterStyles}>
             {(clusterer) => (
               posts.map((post) => (
@@ -269,7 +336,7 @@ export default function Map() {
             )}
           </MarkerClustererF>
         ) : (
-          // ズームイン時：groupedPostsを使用（画像スタック or カード）
+          // ズームイン時：groupedPostsを使用（スタック or 詳細カード）
           groupedPosts.map((group, index) => {
             const post = group[0];
             const isMultiple = group.length > 1;
