@@ -105,10 +105,10 @@ const CollectionModal = ({ posts, onClose, navigate }) => {
 const PostOverlay = ({ post, onClick, zoomLevel }) => {
   const baseZoom = 15;
   const scale = Math.pow(1.2, zoomLevel - baseZoom);
-  const currentWidth = Math.min(Math.max(100 * scale, 60), 250);
-  const currentImageHeight = Math.min(Math.max(80 * scale, 40), 180);
-  const currentFontSize = Math.min(Math.max(12 * scale, 10), 18);
-  const currentIconSize = Math.min(Math.max(16 * scale, 12), 24);
+  const currentWidth = Math.min(Math.max(80 * scale, 48), 200);
+  const currentImageHeight = Math.min(Math.max(64 * scale, 32), 144);
+  const currentFontSize = Math.min(Math.max(10 * scale, 8), 14);
+  const currentIconSize = Math.min(Math.max(13 * scale, 10), 19);
 
   return (
     <div
