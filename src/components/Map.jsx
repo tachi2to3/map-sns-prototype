@@ -563,6 +563,12 @@ export default function Map() {
         options={{
           disableDefaultUI: true,
           zoomControl: false,
+          mapTypeControl: false,
+          scaleControl: false,
+          streetViewControl: false,
+          rotateControl: false,
+          fullscreenControl: false,
+          keyboardShortcuts: false,
           gestureHandling: "greedy",
           styles: mapStyles,
           backgroundColor: '#000000'
