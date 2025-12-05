@@ -8,7 +8,8 @@ import PostDetail from './PostDetail';
 import Header from './Header';
 import FollowButton from './FollowButton';
 
-const containerStyle = { width: '100%', height: '100dvh' };
+// PostListの閉じた状態（80px）を考慮して地図の高さを調整
+const containerStyle = { width: '100%', height: 'calc(100dvh - 80px)' };
 const defaultCenter = { lat: 35.681236, lng: 139.767125 };
 
 // マップスタイル
@@ -551,7 +552,22 @@ export default function Map() {
       <PostList posts={sortedPosts} onOpenStateChange={setIsPostListOpen} />
       {collectionModalPosts && <CollectionModal posts={collectionModalPosts} onClose={() => setCollectionModalPosts(null)} navigate={navigate} />}
 
-      <GoogleMap mapContainerStyle={containerStyle} center={defaultCenter} zoom={zoomLevel} onLoad={onLoad} onUnmount={onUnmount} onIdle={handleIdle} onZoomChanged={handleZoomChanged} options={{ zoomControl: false, mapTypeControl: false, streetViewControl: false, fullscreenControl: false, gestureHandling: "greedy", styles: mapStyles, backgroundColor: '#000000' }}>
+      <GoogleMap
+        mapContainerStyle={containerStyle}
+        center={defaultCenter}
+        zoom={zoomLevel}
+        onLoad={onLoad}
+        onUnmount={onUnmount}
+        onIdle={handleIdle}
+        onZoomChanged={handleZoomChanged}
+        options={{
+          disableDefaultUI: true,
+          zoomControl: false,
+          gestureHandling: "greedy",
+          styles: mapStyles,
+          backgroundColor: '#000000'
+        }}
+      >
         {currentLocation && (
           <OverlayViewF position={currentLocation} mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}>
             <div className="relative flex items-center justify-center pointer-events-none" style={{ zIndex: 9999 }}>
