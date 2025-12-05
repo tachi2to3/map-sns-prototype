@@ -135,7 +135,7 @@ export default function PostPage() {
         lng: location.lng,
         locationSource: locationSource,
         userId: currentUser.uid,
-        username: currentUser.displayName || "名無し",
+        username: currentUser.username || "名無し",
         userIcon: currentUser.photoURL || "",
         createdAt: serverTimestamp(),
       });
