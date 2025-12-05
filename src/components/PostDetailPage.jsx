@@ -116,12 +116,12 @@ export default function PostDetailPage() {
 
         <div className="p-6 space-y-6">
           <div>
-            <div className="flex justify-between items-center mb-4 text-xs text-[#Decbb7]/60 font-sans border-b border-[#Decbb7]/10 pb-4">
-              <span className="flex items-center gap-1">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 text-xs text-[#Decbb7]/60 font-sans border-b border-[#Decbb7]/10 pb-4">
+              <span className="flex items-center gap-1 break-words">
                 📍 {displayAddress || "Location info"}
               </span>
-              
-              <div className="flex items-center gap-3">
+
+              <div className="flex items-center gap-3 justify-between sm:justify-end flex-shrink-0">
                 {/* ★追加: ユーザーアイコン */}
                 <div className="flex items-center gap-2">
                   {post.userIcon ? (
@@ -131,9 +131,9 @@ export default function PostDetailPage() {
                       <span className="text-[10px] font-bold text-white/50">{post.username?.slice(0, 1)}</span>
                     </div>
                   )}
-                  <span>by {post.username}</span>
+                  <span className="truncate max-w-[120px]">by {post.username}</span>
                 </div>
-                
+
                 <FollowButton targetUserId={post.userId} />
               </div>
             </div>
