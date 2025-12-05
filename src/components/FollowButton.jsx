@@ -1,54 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { doc, deleteDoc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
-import { db } from '../firebase';
+import React from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useFollow } from '../context/FollowContext';
 
 export default function FollowButton({ targetUserId }) {
   const { currentUser } = useAuth();
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [isMe, setIsMe] = useState(false);
+  const { followingSet, toggleFollow } = useFollow();
 
-  useEffect(() => {
-    if (!currentUser || !targetUserId) return;
+  // 自分自身かどうかをチェック
+  const isMe = currentUser?.uid === targetUserId;
 
-    if (currentUser.uid === targetUserId) {
-      setIsMe(true);
-      return;
-    }
+  // Contextからフォロー状態を取得
+  const isFollowing = followingSet.has(targetUserId);
 
-    // リアルタイムでフォロー状態を監視
-    const unsubscribe = onSnapshot(doc(db, "users", currentUser.uid, "following", targetUserId), (docSnap) => {
-      setIsFollowing(docSnap.exists());
-    });
-
-    return () => unsubscribe();
-  }, [currentUser, targetUserId]);
-
-  const toggleFollow = async (e) => {
+  const handleToggleFollow = async (e) => {
     // 親要素へのクリック伝播を防ぐ（リストをクリックして詳細へ飛ぶのを防ぐため）
-    e.stopPropagation(); 
-    
+    e.stopPropagation();
+
     if (!currentUser || isMe) return;
 
-    const myFollowingRef = doc(db, "users", currentUser.uid, "following", targetUserId);
-    const userFollowersRef = doc(db, "users", targetUserId, "followers", currentUser.uid);
-
-    if (isFollowing) {
-      // フォロー解除
-      await deleteDoc(myFollowingRef);
-      await deleteDoc(userFollowersRef);
-    } else {
-      // フォロー登録
-      await setDoc(myFollowingRef, { createdAt: serverTimestamp() });
-      await setDoc(userFollowersRef, { createdAt: serverTimestamp() });
-    }
+    // Contextのフォロー操作を呼び出す
+    await toggleFollow(targetUserId);
   };
 
   if (isMe || !currentUser) return null;
 
   return (
     <button
-      onClick={toggleFollow}
+      onClick={handleToggleFollow}
       className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider border transition-all z-20 relative ${
         isFollowing
           ? "border-[#Decbb7]/30 text-[#Decbb7]/50 bg-transparent"
