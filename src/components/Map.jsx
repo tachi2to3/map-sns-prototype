@@ -46,7 +46,7 @@ const StackMarker = ({ posts, onClick }) => {
   const topImage = posts[0].imageUrl;
 
   return (
-    <div 
+    <div
       onClick={onClick}
       className="relative cursor-pointer hover:scale-110 transition-transform duration-200"
       style={{ width: '60px', height: '60px' }}
@@ -88,7 +88,7 @@ const CollectionModal = ({ posts, onClose, navigate }) => {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
                   <p className="text-white text-sm font-bold truncate">{post.caption}</p>
                   <div className="flex items-center gap-1 mt-1">
-                    {post.userIcon ? <img src={post.userIcon} className="w-4 h-4 rounded-full" /> : <div className="w-4 h-4 rounded-full bg-white/20"/>}
+                    {post.userIcon ? <img src={post.userIcon} className="w-4 h-4 rounded-full" /> : <div className="w-4 h-4 rounded-full bg-white/20" />}
                     <span className="text-[10px] text-white/70 truncate">{post.username}</span>
                   </div>
                 </div>
@@ -179,7 +179,7 @@ export default function Map() {
 
     const groups = {};
     let precision;
-    if (zoomLevel < 16) precision = 0.002; 
+    if (zoomLevel < 16) precision = 0.002;
     else if (zoomLevel < 18) precision = 0.0005;
     else precision = 0.0001;
 
@@ -195,17 +195,54 @@ export default function Map() {
 
   const onLoad = useCallback((map) => {
     setMap(map);
-    setZoomLevel(map.getZoom());
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          setCurrentLocation(loc);
-          map.panTo(loc);
-        }
-      );
+
+    const savedCenter = sessionStorage.getItem('map_center');
+    const savedZoom = sessionStorage.getItem('map_zoom');
+
+    if (savedCenter && savedZoom) {
+      // 保存された位置を復元
+      const center = JSON.parse(savedCenter);
+      const zoom = parseInt(savedZoom, 10);
+      map.setCenter(center);
+      map.setZoom(zoom);
+      setZoomLevel(zoom);
+
+      // 現在位置マーカー表示用に位置情報を取得（地図は移動させない）
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            setCurrentLocation(loc);
+          }
+        );
+      }
+    } else {
+      // 初回アクセス時は現在位置に移動
+      setZoomLevel(map.getZoom());
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            setCurrentLocation(loc);
+            map.panTo(loc);
+          }
+        );
+      }
     }
   }, []);
+
+  // マップがアイドル状態（移動終了）になったら現在地を保存
+  const handleIdle = useCallback(() => {
+    if (map) {
+      const center = map.getCenter();
+      const zoom = map.getZoom();
+      if (center) {
+        sessionStorage.setItem('map_center', JSON.stringify({ lat: center.lat(), lng: center.lng() }));
+      }
+      sessionStorage.setItem('map_zoom', zoom.toString());
+    }
+  }, [map]);
 
   const onUnmount = useCallback(() => setMap(null), []);
 
@@ -216,10 +253,10 @@ export default function Map() {
   const handleMapClick = () => setSelectedPost(null);
 
   const panToCurrentLocation = () => {
-    if (map && currentLocation) { map.panTo(currentLocation); map.setZoom(16); } 
+    if (map && currentLocation) { map.panTo(currentLocation); map.setZoom(16); }
     else if (navigator.geolocation) { navigator.geolocation.getCurrentPosition((pos) => { const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }; setCurrentLocation(loc); map?.panTo(loc); map?.setZoom(16); }); }
   };
-  
+
   const handleFileSelect = (e) => { const file = e.target.files[0]; if (!file) return; navigate('/post', { state: { selectedFile: file } }); e.target.value = ''; };
 
   // スライダー操作ロジック
@@ -251,30 +288,30 @@ export default function Map() {
       <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
 
       {/* ★修正: 視覚的な「つまみ」 + 透明な操作判定 */}
-      <div 
+      <div
         className="absolute right-4 top-1/2 -translate-y-1/2 z-40 h-64 w-12 flex items-center justify-center"
       >
         {/* 見た目用のつまみ (sliderValueに合わせて動く) */}
-        <div 
+        <div
           className="absolute w-10 h-10 bg-[#Decbb7] rounded-full shadow-lg pointer-events-none transition-transform duration-75 ease-out flex items-center justify-center border-2 border-[#1a1a1a]"
-          style={{ 
+          style={{
             // 上(+値)に行くとY座標はマイナスになるので -sliderValue
             // 係数を掛けて移動距離を調整 (例: * 8px)
-            transform: `translateY(${-sliderValue * 10}px)` 
+            transform: `translateY(${-sliderValue * 10}px)`
           }}
         >
           {/* つまみの中の装飾（+/-アイコンなど） */}
           <div className="flex flex-col gap-0.5 opacity-50">
-             <div className="w-4 h-0.5 bg-[#1a1a1a] rounded-full"></div>
-             <div className="w-4 h-0.5 bg-[#1a1a1a] rounded-full"></div>
-             <div className="w-4 h-0.5 bg-[#1a1a1a] rounded-full"></div>
+            <div className="w-4 h-0.5 bg-[#1a1a1a] rounded-full"></div>
+            <div className="w-4 h-0.5 bg-[#1a1a1a] rounded-full"></div>
+            <div className="w-4 h-0.5 bg-[#1a1a1a] rounded-full"></div>
           </div>
         </div>
 
         {/* 透明なinput (判定用) */}
         <input
           type="range"
-          min="-10" 
+          min="-10"
           max="10"
           step="1"
           value={sliderValue}
@@ -302,7 +339,7 @@ export default function Map() {
       <PostList posts={posts} onOpenStateChange={setIsPostListOpen} />
       {collectionModalPosts && <CollectionModal posts={collectionModalPosts} onClose={() => setCollectionModalPosts(null)} navigate={navigate} />}
 
-      <GoogleMap mapContainerStyle={containerStyle} center={currentLocation || defaultCenter} zoom={zoomLevel} onLoad={onLoad} onUnmount={onUnmount} onZoomChanged={handleZoomChanged} options={{ disableDefaultUI: true, zoomControl: false, gestureHandling: "greedy", styles: mapStyles, backgroundColor: '#000000' }}>
+      <GoogleMap mapContainerStyle={containerStyle} center={defaultCenter} zoom={zoomLevel} onLoad={onLoad} onUnmount={onUnmount} onIdle={handleIdle} onZoomChanged={handleZoomChanged} options={{ disableDefaultUI: true, zoomControl: false, gestureHandling: "greedy", styles: mapStyles, backgroundColor: '#000000' }}>
         {currentLocation && (
           <OverlayViewF position={currentLocation} mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}>
             <div className="relative flex items-center justify-center pointer-events-none" style={{ zIndex: 9999 }}>
@@ -328,8 +365,8 @@ export default function Map() {
                   }}
                   onClick={() => {
                     map.panTo({ lat: post.lat, lng: post.lng });
-                    map.setZoom(16); 
-                    navigate(`/post/${post.id}`); 
+                    map.setZoom(16);
+                    navigate(`/post/${post.id}`);
                   }}
                 />
               ))
