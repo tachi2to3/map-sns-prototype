@@ -49,7 +49,7 @@ export default function PostList({ posts, onOpenStateChange }) {
           "relative w-full h-full flex flex-col",
           "bg-[#121212]/95 backdrop-blur-xl",
           "border-t border-white/10",
-          "rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.5)]",
+          "rounded-none shadow-[0_-10px_40px_rgba(0,0,0,0.5)]",
           "overflow-hidden"
         )}>
           
