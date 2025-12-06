@@ -107,7 +107,7 @@ const applyForceSimulation = (posts, map, zoomLevel) => {
   if (!map || posts.length === 0) return posts;
 
   // カードサイズを計算
-  const scale = Math.pow(1.2, zoomLevel - 15);
+  const scale = Math.pow(1.15, zoomLevel - 15);
   const cardWidth = Math.min(Math.max(96 * scale, 48), 240);
   const cardHeight = Math.min(Math.max(77 * scale, 32), 172) + 60; // 画像+テキスト+余白
 
@@ -150,7 +150,17 @@ const applyForceSimulation = (posts, map, zoomLevel) => {
       const distance = Math.sqrt(dx * dx + dy * dy);
       if (distance < densityRadius) nearbyCount++;
     }
-    p.scaleFactor = Math.max(0.6, 1.0 - (nearbyCount * 0.08));
+
+    // 基本スケール（密集している場合は縮小）
+    const baseScale = Math.max(0.6, 1.0 - (nearbyCount * 0.08));
+
+    // 密度ボーナス（周囲が空いている場合は拡大、最大1.5倍）
+    if (nearbyCount <= 2) {
+      const bonus = 1.5 - (nearbyCount * 0.25); // nearbyCount: 0→1.5倍, 1→1.25倍, 2→1.0倍
+      p.scaleFactor = Math.min(1.5, baseScale * bonus);
+    } else {
+      p.scaleFactor = baseScale;
+    }
   });
 
   // 力学シミュレーション
@@ -267,7 +277,7 @@ const calculateDistance = (lat1, lng1, lat2, lng2) => {
 // 投稿詳細ピン
 const PostOverlay = ({ post, onClick, zoomLevel }) => {
   const baseZoom = 15;
-  const scale = Math.pow(1.2, zoomLevel - baseZoom);
+  const scale = Math.pow(1.15, zoomLevel - baseZoom);
 
   // 密度に応じたスケールファクターを適用
   const densityScale = post.scaleFactor || 1.0;
@@ -339,7 +349,7 @@ export default function Map() {
   const [sliderValue, setSliderValue] = useState(0);
   const startZoomRef = useRef(15);
 
-  const SHOW_POST_ZOOM_LEVEL = 15;
+  const SHOW_POST_ZOOM_LEVEL = 14;
 
   useEffect(() => {
     const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
