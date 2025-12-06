@@ -87,7 +87,7 @@ const CollectionModal = ({ posts, onClose, navigate }) => {
             {posts.map(post => (
               <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="relative aspect-square bg-[#1a1a1a] rounded-xl overflow-hidden border border-white/10 cursor-pointer group">
                 <img src={post.imageUrl} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-90 group-hover:opacity-100" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent transition-opacity flex flex-col justify-end p-3">
                   <p className="text-white text-sm font-bold truncate">{post.caption}</p>
                   <div className="flex items-center gap-1 mt-1">
                     {post.userIcon ? <img src={post.userIcon} className="w-4 h-4 rounded-full" /> : <div className="w-4 h-4 rounded-full bg-white/20" />}
