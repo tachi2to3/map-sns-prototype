@@ -3,6 +3,7 @@ import { GoogleMap, useJsApiLoader, Marker, InfoWindow, OverlayView, OverlayView
 import { db } from '../firebase';
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import PostList from './PostList';
 import PostDetail from './PostDetail';
 import Header from './Header';
@@ -335,6 +336,7 @@ export default function Map() {
   });
 
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const fileInputRef = useRef(null);
 
   const [map, setMap] = useState(null);
@@ -480,7 +482,16 @@ export default function Map() {
     else if (navigator.geolocation) { navigator.geolocation.getCurrentPosition((pos) => { const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }; setCurrentLocation(loc); map?.panTo(loc); map?.setZoom(16); }); }
   };
 
-  const handleFileSelect = (e) => { const file = e.target.files[0]; if (!file) return; navigate('/post', { state: { selectedFile: file } }); e.target.value = ''; };
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!currentUser) {
+      navigate('/auth');
+      return;
+    }
+    navigate('/post', { state: { selectedFile: file } });
+    e.target.value = '';
+  };
 
   // スライダー操作ロジック
   const handleSliderStart = () => {
@@ -548,11 +559,14 @@ export default function Map() {
         />
       </div>
 
-      <div className={`absolute left-6 z-40 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isPostListOpen ? 'bottom-[calc(80vh+20px)]' : 'bottom-28'}`}>
-        <button onClick={() => fileInputRef.current.click()} className="bg-[#Decbb7] text-[#1a1a1a] rounded-full p-4 shadow-[0_0_30px_rgba(222,203,183,0.4)] transition-all transform hover:scale-110 flex items-center justify-center border-2 border-transparent hover:border-white/20" style={{ width: '64px', height: '64px' }}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-        </button>
-      </div>
+      {/* ★変更: 未ログイン時は投稿ボタンを非表示 */}
+      {currentUser && (
+        <div className={`absolute left-6 z-40 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isPostListOpen ? 'bottom-[calc(80vh+20px)]' : 'bottom-28'}`}>
+          <button onClick={() => fileInputRef.current.click()} className="bg-[#Decbb7] text-[#1a1a1a] rounded-full p-4 shadow-[0_0_30px_rgba(222,203,183,0.4)] transition-all transform hover:scale-110 flex items-center justify-center border-2 border-transparent hover:border-white/20" style={{ width: '64px', height: '64px' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          </button>
+        </div>
+      )}
       <div className={`absolute right-6 z-40 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isPostListOpen ? 'bottom-[calc(80vh+20px)]' : 'bottom-28'}`}>
         <button onClick={panToCurrentLocation} className="bg-[#1a1a1a] text-[#Decbb7] border border-[#Decbb7]/50 rounded-full p-4 shadow-lg transition-all transform hover:scale-110 active:scale-95 flex items-center justify-center" style={{ width: '64px', height: '64px' }}>
           <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 22l10-4 10 4L12 2z" /></svg>

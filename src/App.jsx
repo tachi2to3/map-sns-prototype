@@ -17,11 +17,8 @@ function App() {
       <Routes>
         <Route path="/auth" element={<Auth />} />
 
-        <Route path="/" element={
-          <PrivateRoute>
-            <Map />
-          </PrivateRoute>
-        } />
+        {/* ★変更: 地図画面はログイン不要 */}
+        <Route path="/" element={<Map />} />
 
         <Route path="/post" element={
           <PrivateRoute>
@@ -29,12 +26,8 @@ function App() {
           </PrivateRoute>
         } />
 
-        {/* ★追加: 詳細ページのルート (:id は動的に変わります) */}
-        <Route path="/post/:id" element={
-          <PrivateRoute>
-            <PostDetailPage />
-          </PrivateRoute>
-        } />
+        {/* ★変更: 詳細ページもログイン不要 */}
+        <Route path="/post/:id" element={<PostDetailPage />} />
       </Routes>
     </Router>
   );

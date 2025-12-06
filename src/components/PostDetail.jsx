@@ -27,7 +27,11 @@ export default function PostDetail({ post }) {
 
   // 2. いいねボタンを押した時の処理
   const toggleLike = async () => {
-    if (!currentUser) return;
+    // ★変更: 未ログイン時はアラート表示
+    if (!currentUser) {
+      alert('ログインして、いいねやコメントをしましょう！');
+      return;
+    }
     // 自分のIDをドキュメント名にした参照を作成
     const likeRef = doc(db, 'posts', post.id, 'likes', currentUser.uid);
     if (isLiked) {
@@ -104,16 +108,17 @@ export default function PostDetail({ post }) {
 
         {/* コメント入力フォーム */}
         <form onSubmit={sendComment} className="flex">
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
-            placeholder="コメントを追加..." 
+            placeholder={currentUser ? "コメントを追加..." : "ログインしてコメントを追加"}
             className="flex-grow border border-gray-300 rounded-l px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+            disabled={!currentUser}
           />
-          <button 
-            type="submit" 
-            disabled={!newComment.trim()}
+          <button
+            type="submit"
+            disabled={!newComment.trim() || !currentUser}
             className="bg-blue-500 text-white px-4 py-2 rounded-r text-sm font-bold hover:bg-blue-600 disabled:bg-gray-300"
           >
             送信

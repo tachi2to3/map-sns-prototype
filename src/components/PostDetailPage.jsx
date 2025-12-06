@@ -77,7 +77,11 @@ export default function PostDetailPage() {
   }, [id, currentUser]);
 
   const toggleLike = async () => {
-    if (!currentUser) return;
+    // ★変更: 未ログイン時はアラート表示
+    if (!currentUser) {
+      alert('ログインして、いいねやコメントをしましょう！');
+      return;
+    }
     const likeRef = doc(db, 'posts', id, 'likes', currentUser.uid);
     if (isLiked) await deleteDoc(likeRef);
     else await setDoc(likeRef, { createdAt: serverTimestamp() });
@@ -85,7 +89,7 @@ export default function PostDetailPage() {
 
   const sendComment = async (e) => {
     e.preventDefault();
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || !currentUser) return;
     await addDoc(collection(db, 'posts', id, 'comments'), {
       text: newComment,
       userId: currentUser.uid,
@@ -172,16 +176,17 @@ export default function PostDetailPage() {
 
       <div className="fixed bottom-0 left-0 w-full bg-[#1a1a1a]/95 backdrop-blur-md border-t border-[#Decbb7]/20 p-4 pb-safe">
         <form onSubmit={sendComment} className="flex items-center space-x-3 max-w-md mx-auto">
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
-            placeholder="コメントを入力..." 
+            placeholder={currentUser ? "コメントを入力..." : "ログインしてコメントを追加"}
             className="flex-1 bg-white/10 text-[#Decbb7] rounded-full px-5 py-3 text-sm focus:outline-none focus:bg-white/15 transition placeholder-[#Decbb7]/30 border border-transparent focus:border-[#Decbb7]/30"
+            disabled={!currentUser}
           />
-          <button 
-            type="submit" 
-            disabled={!newComment.trim()}
+          <button
+            type="submit"
+            disabled={!newComment.trim() || !currentUser}
             className="text-[#Decbb7] font-bold text-sm disabled:opacity-30 px-3 hover:text-white transition"
           >
             送信
